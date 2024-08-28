@@ -15,6 +15,10 @@ class FlipperManager extends DefaultViewManager {
 				return this.fill();
 			});
 	}
+
+	fill() {
+		console.log("will try to fill the other pages");
+	}
 }
 
 export default FlipperManager;

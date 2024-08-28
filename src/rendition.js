@@ -16,6 +16,7 @@ import IframeView from "./managers/views/iframe";
 // Default View Managers
 import DefaultViewManager from "./managers/default/index";
 import ContinuousViewManager from "./managers/continuous/index";
+import FlipperManager from "./managers/flipper";
 
 /**
  * Displays an Epub as a series of Views for each Section.
@@ -178,6 +179,8 @@ class Rendition {
 			viewManager = DefaultViewManager;
 		} else if (typeof manager === "string" && manager === "continuous") {
 			viewManager = ContinuousViewManager;
+		} else if (typeof manager === "string" && manager === "flipper") {
+			viewManager = FlipperManager;
 		} else {
 			// otherwise, assume we were passed a class function
 			viewManager = manager;
