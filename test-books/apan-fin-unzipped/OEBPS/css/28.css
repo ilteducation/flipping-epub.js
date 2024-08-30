@@ -1,0 +1,39 @@
+body{
+position:absolute;
+margin:0px;
+width:865px;
+height:908px;
+}
+.t {opacity:0!important;
+	position: absolute;
+	-webkit-transform-origin: top left;
+	-moz-transform-origin: top left;
+	-o-transform-origin: top left;
+	-ms-transform-origin: top left;
+	-webkit-transform: scale(0.25);
+	-moz-transform: scale(0.25);
+	-o-transform: scale(0.25);
+	-ms-transform: scale(0.25);
+	z-index: 1;
+	position:absolute;
+	white-space:nowrap;
+	overflow:visible;
+}
+
+#t1_28{left: 297px;top: 214px;letter-spacing: 4px;}
+#t2_28{left: 293px;top: 371px;letter-spacing: 10px;}
+.s2_28{
+	FONT-SIZE: 355px;
+	font-family:Helvetica;
+	color: rgba(255, 255, 255, 0);
+}
+.s1_28{
+	FONT-SIZE: 382px;
+	font-family:Helvetica;
+	color: rgba(255, 255, 255, 0);
+}
+
+@font-face {
+font-family:Helvetica;
+src:url("../fonts/Helvetica.ttf");
+}

@@ -1,0 +1,51 @@
+body{
+position:absolute;
+margin:0px;
+width:865px;
+height:908px;
+}
+.t {opacity:0!important;
+	position: absolute;
+	-webkit-transform-origin: top left;
+	-moz-transform-origin: top left;
+	-o-transform-origin: top left;
+	-ms-transform-origin: top left;
+	-webkit-transform: scale(0.25);
+	-moz-transform: scale(0.25);
+	-o-transform: scale(0.25);
+	-ms-transform: scale(0.25);
+	z-index: 1;
+	position:absolute;
+	white-space:nowrap;
+	overflow:visible;
+}
+
+#t1_24{left:207px;top:336px;letter-spacing:-12px;}
+#t2_24{left: 215px;top: 522px;letter-spacing: 20px;}
+#t2_24 {
+	-webkit-transform-origin: left top;
+	-ms-transform-origin: left top;
+	-moz-transform-origin: left top;
+	-o-transform-origin: left top;
+}
+.s2_24{
+	FONT-SIZE: 359px;
+	font-family:Helvetica;
+	color: rgba(255, 255, 255, 0);
+}
+.s1_24{
+	FONT-SIZE: 462px;
+	font-family:Helvetica;
+	color: rgba(255, 255, 255, 0);
+}
+.v1{
+-webkit-transform: scale(0.25, 0.30);
+-ms-transform: scale(0.25, 0.30);
+-moz-transform: scale(0.25, 0.30);
+-o-transform: scale(0.25, 0.30);
+}
+
+@font-face {
+font-family:Helvetica;
+src:url("../fonts/Helvetica.ttf");
+}

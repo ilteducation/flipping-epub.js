@@ -17,6 +17,10 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	fill() {
+
+		// Add one more page after this one
+
+
 		console.log("will try to fill the other pages");
 	}
 }

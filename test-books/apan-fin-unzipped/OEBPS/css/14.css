@@ -1,0 +1,64 @@
+body{
+position:absolute;
+margin:0px;
+width:865px;
+height:908px;
+}
+.t {opacity:0!important;
+	position: absolute;
+	-webkit-transform-origin: top left;
+	-moz-transform-origin: top left;
+	-o-transform-origin: top left;
+	-ms-transform-origin: top left;
+	-webkit-transform: scale(0.25);
+	-moz-transform: scale(0.25);
+	-o-transform: scale(0.25);
+	-ms-transform: scale(0.25);
+	z-index: 1;
+	position:absolute;
+	white-space:nowrap;
+	overflow:visible;
+}
+
+#t1_14{left:352px;top:225px;}
+#t2_14{left:372px;top:225px;}
+#t3_14{left: 234px;top: 230px;letter-spacing: -6px;}
+#t4_14{left:514px;top:208px;letter-spacing:-11px;}
+#t5_14{left: 317px;top: 363px;letter-spacing: -10px;}
+#t4_14 {
+	-webkit-transform-origin: left top;
+	-ms-transform-origin: left top;
+	-moz-transform-origin: left top;
+	-o-transform-origin: left top;
+}
+.s3_14{
+	FONT-SIZE: 325px;
+	font-family:Helvetica;
+	color: rgba(255, 255, 255, 0);
+}
+.s4_14{
+	FONT-SIZE: 406px;
+	font-family:Helvetica;
+	color: rgba(255, 255, 255, 0);
+}
+.s2_14{
+	FONT-SIZE: 360px;
+	font-family:Helvetica;
+	color: rgba(255, 255, 255, 0);
+}
+.s1_14{
+	FONT-SIZE: 62px;
+	font-family:Helvetica;
+	color: rgba(255, 255, 255, 0);
+}
+.v1{
+-webkit-transform: scale(0.25, 0.34);
+-ms-transform: scale(0.25, 0.34);
+-moz-transform: scale(0.25, 0.34);
+-o-transform: scale(0.25, 0.34);
+}
+
+@font-face {
+font-family:Helvetica;
+src:url("../fonts/Helvetica.ttf");
+}
