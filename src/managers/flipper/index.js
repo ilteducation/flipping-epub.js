@@ -32,7 +32,7 @@ class FlipperManager extends DefaultViewManager {
 
 		// View is already shown, just move to correct location in view
 		if(visible && section && this.layout.name !== "pre-paginated") {
-			// TODO -  FIX this for reflowable books
+			// TODO -  FIXME this for reflowable books
 			let offset = visible.offset();
 
 			if (this.settings.direction === "ltr") {
@@ -56,9 +56,6 @@ class FlipperManager extends DefaultViewManager {
 		this.clear();
 
 		let forceRight = false;
-		/*
-		If it is the first page (cover), move it to the right
-		 */
 		if ((this.layout.name === "pre-paginated" && this.layout.divisor === 2 && section.properties.includes("page-spread-right"))) {
 			forceRight = true;
 		}
@@ -85,7 +82,10 @@ class FlipperManager extends DefaultViewManager {
 
 				displaying.resolve();
 
-			}.bind(this));
+			}.bind(this))
+			.then(() => {
+				return this.renderUnderPages();
+			});
 		// .then(function(){
 		// 	return this.hooks.display.trigger(view);
 		// }.bind(this))
@@ -124,8 +124,8 @@ class FlipperManager extends DefaultViewManager {
 		return view.display(this.request);
 	}
 
-	append(section, forceRight){
-		var view = this.createView(section, forceRight);
+	append(section, forceRight, viewFlippingState){
+		var view = this.createView(section, forceRight, viewFlippingState);
 		this.views.append(view);
 
 		view.onDisplayed = this.afterDisplayed.bind(this);
@@ -230,6 +230,39 @@ class FlipperManager extends DefaultViewManager {
 		}
 	}
 
+	renderUnderPages ()  {
+		return this.renderNextUnderPages()
+			.then(() => {
+				return this.renderPreviousUnderPages();
+			});
+
+	}
+
+	renderNextUnderPages () {
+		const lastView = this.views.last();
+		const rightPagePlusOne = lastView && lastView.section.next();
+		if(!rightPagePlusOne) {
+			return Promise.resolve();
+		}
+
+		const rightPagePlusTwo  = rightPagePlusOne.next();
+
+		return this.q.enqueue( () => {
+			return this.append(rightPagePlusOne, false, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE);
+		})
+			.then(() => {
+				if(rightPagePlusTwo) {
+					return this.q.enqueue(() => {
+						return this.append(rightPagePlusTwo, true, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
+					});
+				}
+			});
+	}
+
+	renderPreviousUnderPages () {
+		// TODO
+		return Promise.resolve();
+	}
 
 	addAnotherPageAfter() {
 		const lastView = this.views.last();
