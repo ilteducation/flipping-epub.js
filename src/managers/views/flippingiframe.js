@@ -83,7 +83,15 @@ class FlippingIframeView extends IframeView {
 			.then(function() {
 				this.emit(EVENTS.VIEWS.RENDERED, this.section);
 			}.bind(this));
+	}
 
+	setFlippingState(newFlippingState) {
+		// Removing old class
+		this.element.classList.remove(this.viewFlippingState);
+
+		this.viewFlippingState = newFlippingState;
+
+		this.element.classList.add(this.viewFlippingState);
 	}
 
 }

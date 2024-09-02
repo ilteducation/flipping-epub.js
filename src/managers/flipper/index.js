@@ -13,11 +13,10 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	createView(section, forceRight, viewFlippingState) {
-		return new this.View(section, extend(this.viewSettings, { forceRight, viewFlippingState }) );
+		return new this.View(section, extend(this.viewSettings, {forceRight, viewFlippingState}));
 	}
 
-	display(section, target){
-
+	display(section, target) {
 		var displaying = new defer();
 		var displayed = displaying.promise;
 
@@ -31,7 +30,7 @@ class FlipperManager extends DefaultViewManager {
 
 
 		// View is already shown, just move to correct location in view
-		if(visible && section && this.layout.name !== "pre-paginated") {
+		if (visible && section && this.layout.name !== "pre-paginated") {
 			// TODO -  FIXME this for reflowable books
 			let offset = visible.offset();
 
@@ -42,7 +41,7 @@ class FlipperManager extends DefaultViewManager {
 				this.scrollTo(offset.left + width, offset.top, true);
 			}
 
-			if(target) {
+			if (target) {
 				let offset = visible.locationOf(target);
 				let width = visible.width();
 				this.moveTo(offset, width);
@@ -61,10 +60,10 @@ class FlipperManager extends DefaultViewManager {
 		}
 
 		this.add(section, forceRight)
-			.then(function(view){
+			.then(function (view) {
 
 				// Move to correct place within the section, if needed
-				if(target) {
+				if (target) {
 					let offset = view.locationOf(target);
 					let width = view.width();
 					this.moveTo(offset, width);
@@ -73,10 +72,10 @@ class FlipperManager extends DefaultViewManager {
 			}.bind(this), (err) => {
 				displaying.reject(err);
 			})
-			.then(function(){
+			.then(function () {
 				return this.handleNextPrePaginated(forceRight, section, this.add);
 			}.bind(this))
-			.then(function(){
+			.then(function () {
 
 				this.views.show();
 
@@ -95,13 +94,13 @@ class FlipperManager extends DefaultViewManager {
 		return displayed;
 	}
 
-	add(section, forceRight){
+	add(section, forceRight) {
 		let viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT;
 
 		/*
-		 	The cover will always be on the right side
-		 */
-		if(section.index === 0) {
+             The cover will always be on the right side
+         */
+		if (section.index === 0) {
 			viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT;
 		}
 
@@ -124,7 +123,7 @@ class FlipperManager extends DefaultViewManager {
 		return view.display(this.request);
 	}
 
-	append(section, forceRight, viewFlippingState){
+	append(section, forceRight, viewFlippingState) {
 		var view = this.createView(section, forceRight, viewFlippingState);
 		this.views.append(view);
 
@@ -142,95 +141,32 @@ class FlipperManager extends DefaultViewManager {
 		return view.display(this.request);
 	}
 
-	next(){
-		var next;
-		var left;
+	next() {
+		if (!this.views.length) return;
 
 		let dir = this.settings.direction;
 
-		if(!this.views.length) return;
-
-		if(this.isPaginated && this.settings.axis === "horizontal" && (!dir || dir === "ltr")) {
-
-			this.scrollLeft = this.container.scrollLeft;
-
-			left = this.container.scrollLeft + this.container.offsetWidth + this.layout.delta;
-
-			if(left <= this.container.scrollWidth) {
-				this.scrollBy(this.layout.delta, 0, true);
-			} else {
-				next = this.views.last().section.next();
-			}
-		} else if (this.isPaginated && this.settings.axis === "horizontal" && dir === "rtl") {
-
-			this.scrollLeft = this.container.scrollLeft;
-
-			if (this.settings.rtlScrollType === "default"){
-				left = this.container.scrollLeft;
-
-				if (left > 0) {
-					this.scrollBy(this.layout.delta, 0, true);
-				} else {
-					next = this.views.last().section.next();
-				}
-			} else {
-				left = this.container.scrollLeft + ( this.layout.delta * -1 );
-
-				if (left > this.container.scrollWidth * -1){
-					this.scrollBy(this.layout.delta, 0, true);
-				} else {
-					next = this.views.last().section.next();
-				}
+		if (!dir || dir === "ltr") { // Left to right
+			const rightVisibleView = this.findRightVisibleView();
+			if (!rightVisibleView) {
+				return;
 			}
 
-		} else if (this.isPaginated && this.settings.axis === "vertical") {
+			rightVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
 
-			this.scrollTop = this.container.scrollTop;
+		} else { // Right to left
 
-			let top  = this.container.scrollTop + this.container.offsetHeight;
 
-			if(top < this.container.scrollHeight) {
-				this.scrollBy(0, this.layout.height, true);
-			} else {
-				next = this.views.last().section.next();
-			}
-
-		} else {
-			next = this.views.last().section.next();
 		}
 
-		if(next) {
-			this.clear();
-			// The new section may have a different writing-mode from the old section. Thus, we need to update layout.
-			this.updateLayout();
 
-			let forceRight = false;
-			if (this.layout.name === "pre-paginated" && this.layout.divisor === 2 && next.properties.includes("page-spread-right")) {
-				forceRight = true;
-			}
-
-			return this.append(next, forceRight)
-				.then(function(){
-					return this.handleNextPrePaginated(forceRight, next, this.append);
-				}.bind(this), (err) => {
-					return err;
-				})
-				.then(function(){
-
-					// Reset position to start for scrolled-doc vertical-rl in default mode
-					if (!this.isPaginated &&
-						this.settings.axis === "horizontal" &&
-						this.settings.direction === "rtl" &&
-						this.settings.rtlScrollType === "default") {
-
-						this.scrollTo(this.container.scrollWidth, 0, true);
-					}
-					this.views.show();
-				}.bind(this));
-		}
+	}
+    
+	findRightVisibleView() {
+		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
 	}
 
-	renderUnderPages ()  {
+	renderUnderPages() {
 		return this.renderNextUnderPages()
 			.then(() => {
 				return this.renderPreviousUnderPages();
@@ -238,20 +174,20 @@ class FlipperManager extends DefaultViewManager {
 
 	}
 
-	renderNextUnderPages () {
+	renderNextUnderPages() {
 		const lastView = this.views.last();
 		const rightPagePlusOne = lastView && lastView.section.next();
-		if(!rightPagePlusOne) {
+		if (!rightPagePlusOne) {
 			return Promise.resolve();
 		}
 
-		const rightPagePlusTwo  = rightPagePlusOne.next();
+		const rightPagePlusTwo = rightPagePlusOne.next();
 
-		return this.q.enqueue( () => {
+		return this.q.enqueue(() => {
 			return this.append(rightPagePlusOne, false, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE);
 		})
 			.then(() => {
-				if(rightPagePlusTwo) {
+				if (rightPagePlusTwo) {
 					return this.q.enqueue(() => {
 						return this.append(rightPagePlusTwo, true, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
 					});
@@ -259,44 +195,71 @@ class FlipperManager extends DefaultViewManager {
 			});
 	}
 
-	renderPreviousUnderPages () {
+	renderPreviousUnderPages() {
 		// TODO
 		return Promise.resolve();
 	}
 
-	addAnotherPageAfter() {
-		const lastView = this.views.last();
-		const nextSection = lastView && lastView.section.next();
+	render(element, size) {
+		super.render(element, size);
 
-		// TODO - figure out force right
-		const forceRight = false;
-
-		if(nextSection) {
-			return this.append(nextSection, forceRight)
-				.then(() => {
-
-					/*
-					Apparently, handleNextPrePaginated keeps the sections (pages) in the right group,
-					meaning that pages that are supposed to be shown together are shown together.
-					 */
-					return this.handleNextPrePaginated(forceRight, nextSection, this.append);
-				})
-				.then(() => {
-					this.views.show();
-				});
-		}
-
-		return Promise.resolve();
+		this.generateDynamicCSS();
 	}
 
-	fillRight() {
-		console.log("will try to fill the other pages");
+	resize(width, height, epubcfi) {
+		super.resize(width, height, epubcfi);
 
-		this.q.enqueue(() => {
-			return this.addAnotherPageAfter();
-		});
+		this.generateDynamicCSS();
+	}
 
-		return Promise.resolve();
+	generateDynamicCSS() {
+		const pageWidth = this.layout.pageWidth;
+		const height = this.layout.height;
+		const animationDurationMs = 600;
+		const startingAngleRad = Math.PI / 6;
+		const progressionBreakPoint = 0.15;
+		const assumedFPS = 60;
+		const numberOfFrames = animationDurationMs / 1000 * assumedFPS;
+
+		let keyFramesCSS = "";
+
+		for (let frame = 0; frame <= numberOfFrames; frame++) {
+
+			const progression = frame / numberOfFrames;
+			// xOffset = how much we fold the page on the horizontal axis
+			const xOffset = progression * pageWidth;
+			const angleRad = progression <= progressionBreakPoint ? startingAngleRad : ( (1 - progression) / ( 1 - progressionBreakPoint)) * startingAngleRad;
+
+			// yOffset = how much we fold the page on the vertical axis
+			const yOffset = height  - xOffset * Math.tan((Math.PI - angleRad) / 2);
+
+			keyFramesCSS += `
+			 ${progression * 100}% {
+				clip-path: polygon(0 0, 100% 0, 100% ${yOffset}px, calc(100% - ${xOffset}px) 100%, 0 100%);
+				}
+			`;
+		}
+
+
+
+
+
+
+		const css = `
+						@keyframes right-top-page-flipping-left {
+				${keyFramesCSS}
+			}
+			
+			.rightPageFlippingToLeft {
+				animation: right-top-page-flipping-left ${animationDurationMs/1000}s forwards;
+			}
+		`;
+
+		const style = document.createElement("style");
+		style.innerHTML = css;
+		document.head.appendChild(style);
+
+
 	}
 }
 
