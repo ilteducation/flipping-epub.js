@@ -9,6 +9,7 @@
     <script src="../dist/epub.js"></script>
 
     <link rel="stylesheet" type="text/css" href="examples.css">
+    <link rel="stylesheet" type="text/css" href="../src/managers/views/flippingpages.css">
 
 </head>
 <body>
@@ -27,6 +28,7 @@
     var book = ePub(url || "../test-books/apan-fin.epub");
     var rendition = book.renderTo("viewer", {
         manager: "flipper",
+        view: "flipping-iframe",
         flow: 'paginated',
         width: "100%",
         height: 600,
