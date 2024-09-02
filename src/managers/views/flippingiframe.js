@@ -90,7 +90,7 @@ class FlippingIframeView extends IframeView {
 		this.element.classList.remove(this.viewFlippingState);
 
 		this.viewFlippingState = newFlippingState;
-
+		this.show();
 		this.element.classList.add(this.viewFlippingState);
 	}
 

@@ -154,6 +154,12 @@ class FlipperManager extends DefaultViewManager {
 
 			rightVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
 
+			const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView();
+			if (flippableFromRightOnLeftSideView) {
+				flippableFromRightOnLeftSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT);
+			}
+
+
 		} else { // Right to left
 
 
@@ -161,9 +167,13 @@ class FlipperManager extends DefaultViewManager {
 
 
 	}
-    
+
 	findRightVisibleView() {
 		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
+	}
+
+	findFlippableFromRightOnLeftSideView() {
+		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE);
 	}
 
 	renderUnderPages() {
@@ -215,50 +225,61 @@ class FlipperManager extends DefaultViewManager {
 	generateDynamicCSS() {
 		const pageWidth = this.layout.pageWidth;
 		const height = this.layout.height;
-		const animationDurationMs = 600;
+		const animationDurationMs = 2400;
 		const startingAngleRad = Math.PI / 6;
 		const progressionBreakPoint = 0.15;
 		const assumedFPS = 60;
 		const numberOfFrames = animationDurationMs / 1000 * assumedFPS;
 
-		let keyFramesCSS = "";
+		let rightTopPageFlippingLeftKeyFrames = "";
+		let flippageFromRightOnLeftSideFlippingLeftKeyFrames = "";
 
 		for (let frame = 0; frame <= numberOfFrames; frame++) {
 
 			const progression = frame / numberOfFrames;
 			// xOffset = how much we fold the page on the horizontal axis
 			const xOffset = progression * pageWidth;
-			const angleRad = progression <= progressionBreakPoint ? startingAngleRad : ( (1 - progression) / ( 1 - progressionBreakPoint)) * startingAngleRad;
+			const angleRad = progression <= progressionBreakPoint ? startingAngleRad : ((1 - progression) / (1 - progressionBreakPoint)) * startingAngleRad;
 
 			// yOffset = how much we fold the page on the vertical axis
-			const yOffset = height  - xOffset * Math.tan((Math.PI - angleRad) / 2);
+			const yOffset = height - xOffset * Math.tan((Math.PI - angleRad) / 2);
 
-			keyFramesCSS += `
+			rightTopPageFlippingLeftKeyFrames += `
 			 ${progression * 100}% {
 				clip-path: polygon(0 0, 100% 0, 100% ${yOffset}px, calc(100% - ${xOffset}px) 100%, 0 100%);
 				}
 			`;
+
+			flippageFromRightOnLeftSideFlippingLeftKeyFrames += `
+			 ${progression * 100}% {
+			 	transformOrigin: ${xOffset}px ${height}px;
+			 	transform: translate3d(${-2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${angleRad}rad);
+			 	clip-path: polygon(0 ${yOffset}px, 0 ${yOffset}px, 0 ${yOffset}px, ${xOffset}px ${height}px, 0 ${height}px);
+			}
+			`;
 		}
-
-
-
-
-
 
 		const css = `
 						@keyframes right-top-page-flipping-left {
-				${keyFramesCSS}
+				${rightTopPageFlippingLeftKeyFrames}
+			}
+			.rightPageFlippingToLeft {
+				animation: right-top-page-flipping-left ${animationDurationMs / 1000}s forwards;
 			}
 			
-			.rightPageFlippingToLeft {
-				animation: right-top-page-flipping-left ${animationDurationMs/1000}s forwards;
+			@keyframes flippable-from-right-on-left-side-flipping-left {
+			${flippageFromRightOnLeftSideFlippingLeftKeyFrames}
+			}
+			.flippableFromRightOnLeftSideFlippingLeft {
+				animation: flippable-from-right-on-left-side-flipping-left ${animationDurationMs / 1000}s forwards;
 			}
 		`;
 
-		const style = document.createElement("style");
+		const styleElementId = "dynamic-flipper-css";
+		const style = document.getElementById(styleElementId) || document.createElement("style");
+		style.id = "dynamic-flipper-css";
 		style.innerHTML = css;
 		document.head.appendChild(style);
-
 
 	}
 }
