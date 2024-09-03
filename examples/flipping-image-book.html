@@ -13,7 +13,14 @@
 
 </head>
 <body>
-<!-- <div id="title"></div> -->
+<div>
+
+    <div>
+        <input type="range" id="progress-slider"  min="0" max="100" />
+    </div>
+
+</div>
+
 <select id="toc"></select>
 <div id="viewer" class="spreads"></div>
 <a id="prev" href="#prev" class="arrow">‹</a>
@@ -152,6 +159,19 @@
 
     });
 
+
+    const progressInput = document.getElementById("progress-slider");
+    progressInput.addEventListener("input", (event) => {
+        const progressValue = event.target.value;
+
+        if(!rendition || !rendition.manager) {
+            return;
+        }
+
+
+        rendition.manager.setPageFlipAnimationProgress(progressValue / 100);
+
+    });
 
 
 
