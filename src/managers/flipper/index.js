@@ -87,6 +87,9 @@ class FlipperManager extends DefaultViewManager {
             }.bind(this))
             .then(() => {
                 return this.renderUnderPages();
+            })
+            .then(() => {
+                return this.generateDynamicCSS();
             });
         // .then(function(){
         // 	return this.hooks.display.trigger(view);
@@ -213,12 +216,6 @@ class FlipperManager extends DefaultViewManager {
         return Promise.resolve();
     }
 
-    render(element, size) {
-        super.render(element, size);
-
-        this.generateDynamicCSS();
-    }
-
     resize(width, height, epubcfi) {
         super.resize(width, height, epubcfi);
 
@@ -226,8 +223,18 @@ class FlipperManager extends DefaultViewManager {
     }
 
     getFlippingAnimationStyles(progression) {
-        const pageWidth = this.layout.pageWidth;
-        const height = this.layout.height;
+
+        /*
+            The actual book page might be smaller
+         */
+
+        const bodyElement = this.views.first().iframe.contentDocument.querySelector('body');
+
+        const bodyRect = bodyElement.getBoundingClientRect();
+        const pageWidth = bodyRect.width;
+        const height = bodyRect.height;
+
+
         const startingAngleRad = Math.PI / 6;
         const progressionBreakPoint = 0.15;
 
