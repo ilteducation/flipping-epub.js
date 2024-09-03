@@ -167,7 +167,7 @@ class FlipperManager extends DefaultViewManager {
 
 
         } else { // Right to left
-
+            // tODO
 
         }
 
@@ -247,14 +247,17 @@ class FlipperManager extends DefaultViewManager {
 
         return {
             rightViewElement: {
-                clipPath: `polygon(0 0, 100% 0, 100% ${yOffset}px, calc(100% - ${xOffset}px) 100%, 0 100%)`,
+                clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${yOffset}px, ${pageWidth -xOffset}px ${height}px, 0 ${height}px)`,
+            },
+            flippableFromRightOnLeftSideViewElement: {
+                transformOrigin: `${xOffset}px ${height}px`,
+                transform: `translate3d(${-2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${angleRad}rad)`,
+                clipPath: `polygon(0 ${yOffset}px, 0 ${yOffset}px, 0 ${yOffset}px, ${xOffset}px ${height}px, 0 ${height}px)`
             }
         };
     }
 
     generateDynamicCSS() {
-
-
         let rightTopPageFlippingLeftKeyFrames = "";
         let flippageFromRightOnLeftSideFlippingLeftKeyFrames = "";
 
@@ -267,17 +270,17 @@ class FlipperManager extends DefaultViewManager {
 
             rightTopPageFlippingLeftKeyFrames += `
 			 ${progression * 100}% {
-				clip-path: ${animationStyles.rightViewElement.clipPath}
+				clip-path: ${animationStyles.rightViewElement.clipPath};
 				}
 			`;
 
-            // flippageFromRightOnLeftSideFlippingLeftKeyFrames += `
-			//  ${progression * 100}% {
-			//  	transformOrigin: ${xOffset}px ${height}px;
-			//  	transform: translate3d(${-2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${angleRad}rad);
-			//  	clip-path: polygon(0 ${yOffset}px, 0 ${yOffset}px, 0 ${yOffset}px, ${xOffset}px ${height}px, 0 ${height}px);
-			// }
-			// `;
+            flippageFromRightOnLeftSideFlippingLeftKeyFrames += `
+			 ${progression * 100}% {
+			 	transform-origin: ${animationStyles.flippableFromRightOnLeftSideViewElement.transformOrigin};
+			 	transform: ${animationStyles.flippableFromRightOnLeftSideViewElement.transform};
+			 	clip-path: ${animationStyles.flippableFromRightOnLeftSideViewElement.clipPath};
+			}
+			`;
         }
 
         const css = `
@@ -305,7 +308,6 @@ class FlipperManager extends DefaultViewManager {
     }
 
 
-
     /*
     TODO - remove this debug method
      */
@@ -324,11 +326,17 @@ class FlipperManager extends DefaultViewManager {
 
         rightVisibleViewElement.style.clipPath = flippingAnimationStyles.rightViewElement.clipPath;
 
+        const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView();
+        if (flippableFromRightOnLeftSideView) {
 
-        // const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView();
-        // if (flippableFromRightOnLeftSideView) {
-        // 	flippableFromRightOnLeftSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT);
-        // }
+            flippableFromRightOnLeftSideView.show();
+
+            const flippableFromRightOnLeftSideViewElement = flippableFromRightOnLeftSideView.element;
+            flippableFromRightOnLeftSideViewElement.style.transformOrigin = flippingAnimationStyles.flippableFromRightOnLeftSideViewElement.transformOrigin;
+            flippableFromRightOnLeftSideViewElement.style.transform = flippingAnimationStyles.flippableFromRightOnLeftSideViewElement.transform;
+            flippableFromRightOnLeftSideViewElement.style.clipPath = flippingAnimationStyles.flippableFromRightOnLeftSideViewElement.clipPath;
+
+        }
 
     }
 
