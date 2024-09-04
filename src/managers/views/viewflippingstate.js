@@ -17,6 +17,10 @@ const VIEW_FLIPPING_STATE = {
     FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE: 'flippableFromLeftOnRightSide',
     FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT: 'flippableFromLeftOnRightSideFlippingRight',
 
+    LEFT_PAGE_FLIPPING_TO_RIGHT: 'leftPageFlippingToRight',
+
+    FLIPPABLE_FROM_LEFT_ONRIGHT_SIDE_FLIPPING_RIGHT: 'flippableFromLeftOnRightSideFlippingRight',
+
 };
 
 export default VIEW_FLIPPING_STATE;

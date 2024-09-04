@@ -693,6 +693,9 @@ class Rendition {
 	 * @fires locationChanged
 	 */
 	reportLocation(){
+
+		console.log("rendition, reporting location");
+
 		return this.q.enqueue(function reportedLocation(){
 			requestAnimationFrame(function reportedLocationAfterRAF() {
 				var location = this.manager.currentLocation();

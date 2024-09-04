@@ -10,9 +10,11 @@ class FlipperManager extends DefaultViewManager {
 		super(options);
 
 		this.name = "flipper";
-		this.animationDurationMs = 800;
+		this.animationDurationMs = 2400;
 		this.assumedFPS = 60;
 		this.numberOfFrames = this.animationDurationMs / 1000 * this.assumedFPS;
+
+        this.isFlipping = false;
 	}
 
 	createView(section, forceRight, viewFlippingState) {
@@ -147,8 +149,21 @@ class FlipperManager extends DefaultViewManager {
 		return view.display(this.request);
 	}
 
+	currentLocation(){
+		return new Promise((resolve, reject) => {
+			const checkInterval = setInterval(() => {
+				if(!this.isFlipping) {
+					clearInterval(checkInterval);
+					resolve(super.currentLocation());
+				}
+			}, 100);
+		});
+	}
+
 	next() {
 		if (!this.views.length) return;
+
+        this.isFlipping = true;
 
 		let dir = this.settings.direction;
 
@@ -182,22 +197,22 @@ class FlipperManager extends DefaultViewManager {
 			if (!dir || dir === "ltr") {
 
 				const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
-				if(flippableFromLeftOnLeftSide) {
+				if (flippableFromLeftOnLeftSide) {
 					this.views.remove(flippableFromLeftOnLeftSide);
 				}
 
 				const flippableFromLeftOnRightSide = this.findFlippableFromLeftOnRightSideView();
-				if(flippableFromLeftOnRightSide) {
+				if (flippableFromLeftOnRightSide) {
 					this.views.remove(flippableFromLeftOnRightSide);
 				}
 
 				const readableLeftPage = this.findReadableLeftPage();
-				if(readableLeftPage) {
+				if (readableLeftPage) {
 					readableLeftPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
 				}
 
 				const readableRightPageFlipping = this.findRightVisibleViewFlippingLeft();
-				if(readableRightPageFlipping) {
+				if (readableRightPageFlipping) {
 					readableRightPageFlipping.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
 				}
 
@@ -207,7 +222,7 @@ class FlipperManager extends DefaultViewManager {
 				}
 
 				const flippingPageOnRightSide = this.findFlippingFromRightOnRightSideView();
-				if(flippingPageOnRightSide) {
+				if (flippingPageOnRightSide) {
 					flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
 				}
 
@@ -215,15 +230,88 @@ class FlipperManager extends DefaultViewManager {
 				// tODO  - right to left
 			}
 
+            this.isFlipping = false;
 
-            // TODO - report location
+		}, this.animationDurationMs);
+	}
 
+	prev() {
+		if (!this.views.length) return;
+        this.isFlipping = true;
 
+		let dir = this.settings.direction;
+
+		if (!dir || dir === "ltr") { // Left to right
+
+			const leftVisibleView = this.findReadableLeftPage();
+			const flippableFromLeftOnRightSideView = this.findFlippableFromLeftOnRightSideView();
+
+			if (!leftVisibleView || !flippableFromLeftOnRightSideView) {
+				return;
+			}
+
+			leftVisibleView.setFlippingState(VIEW_FLIPPING_STATE.LEFT_PAGE_FLIPPING_TO_RIGHT);
+			flippableFromLeftOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ONRIGHT_SIDE_FLIPPING_RIGHT);
+
+			const flippableFromLeftOnLeftSideView = this.findFlippableFromLeftOnLeftSideView();
+			if (flippableFromLeftOnLeftSideView) {
+				flippableFromLeftOnLeftSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT);
+			}
+		} else {
+			// TODO - right to left
+		}
+
+		// Start rendering prev under pages
+		this.renderPreviousUnderPages();
+
+		// Changing stuff after the animation
+		setTimeout(() => {
+			if (!dir || dir === "ltr") {
+
+				const flippableFromRightOnRightSide = this.findFlippableFromRightOnRightSideView();
+				if (flippableFromRightOnRightSide) {
+					this.views.remove(flippableFromRightOnRightSide);
+				}
+
+				const flippableFromRightOnLeftSide = this.findFlippableFromRightOnLeftSideView();
+				if (flippableFromRightOnLeftSide) {
+					this.views.remove(flippableFromRightOnLeftSide);
+				}
+
+				const readableRightPage = this.findRightVisibleView();
+				if (readableRightPage) {
+					readableRightPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
+				}
+
+				const readableLeftPageFlipping = this.findLeftPageFlippingRight();
+				if (readableLeftPageFlipping) {
+					readableLeftPageFlipping.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE);
+				}
+
+				const flippingPageOnRightSide = this.findFlippingFromLeftOnRightSideView();
+				if (flippingPageOnRightSide) {
+					flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
+				}
+
+				const flippingPageOnLeftSide = this.findFlippingFromLeftOnLeftSideView();
+				if (flippingPageOnLeftSide) {
+					flippingPageOnLeftSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
+				}
+
+			} else {
+				// tODO  - right to left
+			}
+
+            this.isFlipping = false;
 		}, this.animationDurationMs);
 	}
 
 	findReadableLeftPage() {
 		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
+	}
+
+	findLeftPageFlippingRight() {
+		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.LEFT_PAGE_FLIPPING_TO_RIGHT);
 	}
 
 	findRightVisibleView() {
@@ -256,6 +344,14 @@ class FlipperManager extends DefaultViewManager {
 
 	findFlippableFromLeftOnRightSideView() {
 		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
+	}
+
+	findFlippingFromLeftOnRightSideView() {
+		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ONRIGHT_SIDE_FLIPPING_RIGHT);
+	}
+
+	findFlippingFromLeftOnLeftSideView() {
+		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT);
 	}
 
 	renderUnderPages() {
@@ -437,6 +533,23 @@ class FlipperManager extends DefaultViewManager {
 
 		}
 
+	}
+
+	/**
+     * Used for calculating location
+     *
+     * @param view
+     * @param offsetPrev
+     * @param offsetNext
+     * @param _container
+     * @returns {boolean}
+     */
+	isVisible(view, offsetPrev, offsetNext, _container) {
+		if (![VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT, VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT].includes(view.viewFlippingState)) {
+			return false;
+		}
+
+		return super.isVisible(view, offsetPrev, offsetNext, _container);
 	}
 
 }
