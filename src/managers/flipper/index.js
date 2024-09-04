@@ -10,11 +10,11 @@ class FlipperManager extends DefaultViewManager {
 		super(options);
 
 		this.name = "flipper";
-		this.animationDurationMs = 2400;
+		this.animationDurationMs = 800;
 		this.assumedFPS = 60;
 		this.numberOfFrames = this.animationDurationMs / 1000 * this.assumedFPS;
 
-        this.isFlipping = false;
+		this.isFlipping = false;
 	}
 
 	createView(section, forceRight, viewFlippingState) {
@@ -149,10 +149,10 @@ class FlipperManager extends DefaultViewManager {
 		return view.display(this.request);
 	}
 
-	currentLocation(){
+	currentLocation() {
 		return new Promise((resolve, reject) => {
 			const checkInterval = setInterval(() => {
-				if(!this.isFlipping) {
+				if (!this.isFlipping) {
 					clearInterval(checkInterval);
 					resolve(super.currentLocation());
 				}
@@ -161,9 +161,15 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	next() {
-		if (!this.views.length) return;
+		if (!this.views.length) {
+			return;
+		}
+		if (this.isFlipping) {
+			console.log("is already flipping");
+			return;
+		}
 
-        this.isFlipping = true;
+		this.isFlipping = true;
 
 		let dir = this.settings.direction;
 
@@ -172,6 +178,7 @@ class FlipperManager extends DefaultViewManager {
 			const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView();
 
 			if (!rightVisibleView || !flippableFromRightOnLeftSideView) {
+				this.isFlipping = false;
 				return;
 			}
 
@@ -230,14 +237,20 @@ class FlipperManager extends DefaultViewManager {
 				// tODO  - right to left
 			}
 
-            this.isFlipping = false;
+			console.log("reseting flipper");
+			this.isFlipping = false;
 
 		}, this.animationDurationMs);
 	}
 
 	prev() {
 		if (!this.views.length) return;
-        this.isFlipping = true;
+		if (this.isFlipping) {
+			console.log("is already flipping");
+			return;
+		}
+
+		this.isFlipping = true;
 
 		let dir = this.settings.direction;
 
@@ -247,6 +260,7 @@ class FlipperManager extends DefaultViewManager {
 			const flippableFromLeftOnRightSideView = this.findFlippableFromLeftOnRightSideView();
 
 			if (!leftVisibleView || !flippableFromLeftOnRightSideView) {
+				this.isFlipping = false;
 				return;
 			}
 
@@ -302,7 +316,7 @@ class FlipperManager extends DefaultViewManager {
 				// tODO  - right to left
 			}
 
-            this.isFlipping = false;
+			this.isFlipping = false;
 		}, this.animationDurationMs);
 	}
 
@@ -426,6 +440,9 @@ class FlipperManager extends DefaultViewManager {
 			rightViewElement: {
 				clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, 0 ${height}px)`,
 			},
+			leftViewElement: {
+				clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${height}px, ${xOffset}px ${height}px, 0 ${yOffset}px)`,
+			},
 			flippableFromRightOnLeftSideViewElement: {
 				transformOrigin: `${xOffset}px ${height}px`,
 				transform: `translate3d(${2 * pageWidth - 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${angleRad}rad)`,
@@ -439,6 +456,7 @@ class FlipperManager extends DefaultViewManager {
 
 	generateDynamicCSS() {
 		let rightTopPageFlippingLeftKeyFrames = "";
+		let leftTopPageFlippingRightKeyFrames = "";
 		let flippageFromRightOnLeftSideFlippingLeftKeyFrames = "";
 		let flippableFromRightOnRightSideFlippingLeftKeyFrames = "";
 
@@ -454,6 +472,11 @@ class FlipperManager extends DefaultViewManager {
 				clip-path: ${animationStyles.rightViewElement.clipPath};
 				}
 			`;
+			leftTopPageFlippingRightKeyFrames += `
+			 ${progression * 100}% {
+			 				clip-path: ${animationStyles.leftViewElement.clipPath};
+			 }
+			 `;
 
 			flippageFromRightOnLeftSideFlippingLeftKeyFrames += `
 			 ${progression * 100}% {
@@ -476,6 +499,14 @@ class FlipperManager extends DefaultViewManager {
 			}
 			.rightPageFlippingToLeft {
 				animation: right-top-page-flipping-left ${this.animationDurationMs / 1000}s forwards;
+			}
+			
+			@keyframes left-top-page-flipping-right {
+				${leftTopPageFlippingRightKeyFrames}
+			}
+			
+			.leftPageFlippingToRight{
+				animation: left-top-page-flipping-right ${this.animationDurationMs / 1000}s forwards;
 			}
 			
 			@keyframes flippable-from-right-on-left-side-flipping-left {
