@@ -10,7 +10,7 @@ class FlipperManager extends DefaultViewManager {
 		super(options);
 
 		this.name = "flipper";
-		this.animationDurationMs = 2400;
+		this.animationDurationMs = 800;
 		this.assumedFPS = 60;
 		this.numberOfFrames = this.animationDurationMs / 1000 * this.assumedFPS;
 	}
@@ -179,6 +179,42 @@ class FlipperManager extends DefaultViewManager {
 
 		// Changing stuff after the animation
 		setTimeout(() => {
+			if (!dir || dir === "ltr") {
+
+				const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
+				if(flippableFromLeftOnLeftSide) {
+					this.views.remove(flippableFromLeftOnLeftSide);
+				}
+
+				const flippableFromLeftOnRightSide = this.findFlippableFromLeftOnRightSideView();
+				if(flippableFromLeftOnRightSide) {
+					this.views.remove(flippableFromLeftOnRightSide);
+				}
+
+				const readableLeftPage = this.findReadableLeftPage();
+				if(readableLeftPage) {
+					readableLeftPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
+				}
+
+				const readableRightPageFlipping = this.findRightVisibleViewFlippingLeft();
+				if(readableRightPageFlipping) {
+					readableRightPageFlipping.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
+				}
+
+				const flippingPageOnLeftSide = this.findFlippingFromRightOnLeftSideView();
+				if (flippingPageOnLeftSide) {
+					flippingPageOnLeftSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
+				}
+
+				const flippingPageOnRightSide = this.findFlippingFromRightOnRightSideView();
+				if(flippingPageOnRightSide) {
+					flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
+				}
+
+			} else {
+				// tODO  - right to left
+			}
+
 
             // TODO - report location
 
@@ -186,8 +222,16 @@ class FlipperManager extends DefaultViewManager {
 		}, this.animationDurationMs);
 	}
 
+	findReadableLeftPage() {
+		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
+	}
+
 	findRightVisibleView() {
 		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
+	}
+
+	findRightVisibleViewFlippingLeft() {
+		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
 	}
 
 	findFlippableFromRightOnLeftSideView() {
@@ -196,6 +240,22 @@ class FlipperManager extends DefaultViewManager {
 
 	findFlippableFromRightOnRightSideView() {
 		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
+	}
+
+	findFlippingFromRightOnLeftSideView() {
+		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT);
+	}
+
+	findFlippingFromRightOnRightSideView() {
+		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT);
+	}
+
+	findFlippableFromLeftOnLeftSideView() {
+		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
+	}
+
+	findFlippableFromLeftOnRightSideView() {
+		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
 	}
 
 	renderUnderPages() {
