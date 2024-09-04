@@ -155,17 +155,17 @@ class FlipperManager extends DefaultViewManager {
 		if (!dir || dir === "ltr") { // Left to right
 			const rightVisibleView = this.findRightVisibleView();
 			const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView();
-            
+
 			if (!rightVisibleView || !flippableFromRightOnLeftSideView) {
 				return;
 			}
 
 			rightVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
 			flippableFromRightOnLeftSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT);
-            
+
 			const flippableFromRightOnRightSideView = this.findFlippableFromRightOnRightSideView();
 			if (flippableFromRightOnRightSideView) {
-                flippableFromRightOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT);
+				flippableFromRightOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT);
 			}
 
 
@@ -174,7 +174,16 @@ class FlipperManager extends DefaultViewManager {
 
 		}
 
+		// Start rendering next under pages
+		this.renderNextUnderPages();
 
+		// Changing stuff after the animation
+		setTimeout(() => {
+
+            // TODO - report location
+
+
+		}, this.animationDurationMs);
 	}
 
 	findRightVisibleView() {
@@ -206,10 +215,12 @@ class FlipperManager extends DefaultViewManager {
 		const rightPagePlusTwo = rightPagePlusOne.next();
 
 		return this.q.enqueue(() => {
-			return this.append(rightPagePlusOne, false, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE);
+			if (!this.findFlippableFromRightOnLeftSideView()) {
+				return this.append(rightPagePlusOne, false, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE);
+			}
 		})
 			.then(() => {
-				if (rightPagePlusTwo) {
+				if (rightPagePlusTwo && !this.findFlippableFromRightOnRightSideView()) {
 					return this.q.enqueue(() => {
 						return this.append(rightPagePlusTwo, true, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
 					});
@@ -228,22 +239,22 @@ class FlipperManager extends DefaultViewManager {
 		this.generateDynamicCSS();
 	}
 
-    getPageSize() {
-        /*
+	getPageSize() {
+		/*
             The actual book page might be smaller
          */
 
-        const bodyElement = this.views.first().iframe.contentDocument.querySelector("body");
+		const bodyElement = this.views.first().iframe.contentDocument.querySelector("body");
 
-        const bodyRect = bodyElement.getBoundingClientRect();
+		const bodyRect = bodyElement.getBoundingClientRect();
 
-        return bodyRect;
-    }
+		return bodyRect;
+	}
 
 	getFlippingAnimationStyles(progression) {
 
 		const pageSize = this.getPageSize();
-        const {width: pageWidth, height} = pageSize;
+		const {width: pageWidth, height} = pageSize;
 
 		const startingAngleRad = Math.PI / 6;
 		const progressionBreakPoint = 0.15;
@@ -257,7 +268,7 @@ class FlipperManager extends DefaultViewManager {
 
 		return {
 			rightViewElement: {
-				clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${yOffset}px, ${pageWidth -xOffset}px ${height}px, 0 ${height}px)`,
+				clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, 0 ${height}px)`,
 			},
 			flippableFromRightOnLeftSideViewElement: {
 				transformOrigin: `${xOffset}px ${height}px`,
