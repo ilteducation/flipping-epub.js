@@ -399,8 +399,26 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	renderPreviousUnderPages() {
-		// TODO
-		return Promise.resolve();
+		const firstView = this.views.first();
+		const leftPageMinusOne = firstView && firstView.section.prev();
+		if (!leftPageMinusOne) {
+			return Promise.resolve();
+		}
+
+		const leftPageMinusTwo = leftPageMinusOne.prev();
+
+		return this.q.enqueue(() => {
+			if (!this.findFlippableFromLeftOnRightSideView()) {
+				return this.append(leftPageMinusOne, true, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
+			}
+		})
+			.then(() => {
+				if (leftPageMinusTwo && !this.findFlippableFromLeftOnLeftSideView()) {
+					return this.q.enqueue(() => {
+						return this.append(leftPageMinusTwo, false, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
+					});
+				}
+			});
 	}
 
 	resize(width, height, epubcfi) {
