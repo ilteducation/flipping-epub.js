@@ -10,11 +10,13 @@ class FlippingIframeView extends IframeView {
 
 		this.viewFlippingState = this.settings.viewFlippingState;
 
-		this.element.classList.add(this.viewFlippingState);
+		this.setFlippingState(this.viewFlippingState);
 	}
 
 	isOnRightSide() {
-		return this.settings.forceRight || this.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT;
+		return this.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT
+			|| this.viewFlippingState === VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT
+		|| this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT;
 	}
 
 	render(request, show) {
@@ -68,9 +70,8 @@ class FlippingIframeView extends IframeView {
 					// Expand the iframe to the full size of the content
 					this.expand();
 
-					if (this.isOnRightSide()) {
-						this.element.style.marginLeft = this.width() + "px";
-					}
+					this.updateInlineStyle();
+
 					resolve();
 				});
 
@@ -90,8 +91,29 @@ class FlippingIframeView extends IframeView {
 		this.element.classList.remove(this.viewFlippingState);
 
 		this.viewFlippingState = newFlippingState;
-		this.show();
 		this.element.classList.add(this.viewFlippingState);
+
+		if([
+			VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT,
+			VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT,
+			VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT,
+			VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT,
+			VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT,
+		].includes(newFlippingState)) {
+			this.show();
+		}
+
+		this.updateInlineStyle();
+	}
+
+	updateInlineStyle() {
+		this.element.style.position = "absolute";
+
+		let leftOffset = 0;
+		if(this.isOnRightSide()) {
+			leftOffset = this.width();
+		}
+		this.element.style.left = leftOffset + "px";
 	}
 
 }
