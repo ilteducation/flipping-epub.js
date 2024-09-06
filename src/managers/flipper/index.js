@@ -149,7 +149,7 @@ class FlipperManager extends DefaultViewManager {
 		return view.display(this.request);
 	}
 
-	prepend(section, forceRight, viewFlippingState){
+	prepend(section, forceRight, viewFlippingState) {
 		var view = this.createView(section, forceRight, viewFlippingState);
 
 		view.on(EVENTS.VIEWS.RESIZED, (bounds) => {
@@ -288,7 +288,7 @@ class FlipperManager extends DefaultViewManager {
 			}
 
 			leftVisibleView.setFlippingState(VIEW_FLIPPING_STATE.LEFT_PAGE_FLIPPING_TO_RIGHT);
-			flippableFromLeftOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ONRIGHT_SIDE_FLIPPING_RIGHT);
+			flippableFromLeftOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT);
 
 			const flippableFromLeftOnLeftSideView = this.findFlippableFromLeftOnLeftSideView();
 			if (flippableFromLeftOnLeftSideView) {
@@ -384,7 +384,7 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	findFlippingFromLeftOnRightSideView() {
-		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ONRIGHT_SIDE_FLIPPING_RIGHT);
+		return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT);
 	}
 
 	findFlippingFromLeftOnLeftSideView() {
@@ -480,11 +480,16 @@ class FlipperManager extends DefaultViewManager {
 
 
 		return {
-			rightViewElement: {
-				clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, 0 ${height}px)`,
+			flippableFromLeftOnRightSideViewElement: {
+				transformOrigin: `${pageWidth - xOffset}px ${height}px`,
+				transform: `translate3d(${-1 * pageWidth + 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${-1 * angleRad}rad)`,
+				clipPath: `polygon(${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, ${pageWidth}px ${height}px)`
 			},
 			leftViewElement: {
 				clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${height}px, ${xOffset}px ${height}px, 0 ${yOffset}px)`,
+			},
+			rightViewElement: {
+				clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, 0 ${height}px)`,
 			},
 			flippableFromRightOnLeftSideViewElement: {
 				transformOrigin: `${xOffset}px ${height}px`,
@@ -498,9 +503,10 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	generateDynamicCSS() {
-		let rightTopPageFlippingLeftKeyFrames = "";
+		let flippableFromLeftOnRightSideFlippingRightKeyframes = "";
 		let leftTopPageFlippingRightKeyFrames = "";
-		let flippageFromRightOnLeftSideFlippingLeftKeyFrames = "";
+		let rightTopPageFlippingLeftKeyFrames = "";
+		let flippableFromRightOnLeftSideFlippingLeftKeyFrames = "";
 		let flippableFromRightOnRightSideFlippingLeftKeyFrames = "";
 
 		for (let frame = 0; frame <= this.numberOfFrames; frame++) {
@@ -509,6 +515,15 @@ class FlipperManager extends DefaultViewManager {
 			// xOffset = how much we fold the page on the horizontal axis
 
 			const animationStyles = this.getFlippingAnimationStyles(progression);
+
+
+			flippableFromLeftOnRightSideFlippingRightKeyframes += `
+                ${progression * 100}% {
+                    transform-origin: ${animationStyles.flippableFromLeftOnRightSideViewElement.transformOrigin};
+                    transform: ${animationStyles.flippableFromLeftOnRightSideViewElement.transform};
+                    clip-path: ${animationStyles.flippableFromLeftOnRightSideViewElement.clipPath};
+                }
+            `;
 
 			rightTopPageFlippingLeftKeyFrames += `
 			 ${progression * 100}% {
@@ -521,7 +536,7 @@ class FlipperManager extends DefaultViewManager {
 			 }
 			 `;
 
-			flippageFromRightOnLeftSideFlippingLeftKeyFrames += `
+			flippableFromRightOnLeftSideFlippingLeftKeyFrames += `
 			 ${progression * 100}% {
 			 	transform-origin: ${animationStyles.flippableFromRightOnLeftSideViewElement.transformOrigin};
 			 	transform: ${animationStyles.flippableFromRightOnLeftSideViewElement.transform};
@@ -537,14 +552,17 @@ class FlipperManager extends DefaultViewManager {
 		}
 
 		const css = `
-						@keyframes right-top-page-flipping-left {
-				${rightTopPageFlippingLeftKeyFrames}
-			}
-			.rightPageFlippingToLeft {
-				animation: right-top-page-flipping-left ${this.animationDurationMs / 1000}s forwards;
-			}
-			
-			@keyframes left-top-page-flipping-right {
+        
+            @keyframes flippable-from-left-on-right-side-flipping-right {
+                ${flippableFromLeftOnRightSideFlippingRightKeyframes}
+            }
+        
+            .flippableFromLeftOnRightSideFlippingRight {
+                z-index: 1;
+                animation: flippable-from-left-on-right-side-flipping-right ${this.animationDurationMs / 1000}s forwards;
+            }
+        
+            @keyframes left-top-page-flipping-right {
 				${leftTopPageFlippingRightKeyFrames}
 			}
 			
@@ -552,8 +570,15 @@ class FlipperManager extends DefaultViewManager {
 				animation: left-top-page-flipping-right ${this.animationDurationMs / 1000}s forwards;
 			}
 			
+			@keyframes right-top-page-flipping-left {
+				${rightTopPageFlippingLeftKeyFrames}
+			}
+			.rightPageFlippingToLeft {
+				animation: right-top-page-flipping-left ${this.animationDurationMs / 1000}s forwards;
+			}
+			
 			@keyframes flippable-from-right-on-left-side-flipping-left {
-			${flippageFromRightOnLeftSideFlippingLeftKeyFrames}
+			${flippableFromRightOnLeftSideFlippingLeftKeyFrames}
 			}
 			.flippableFromRightOnLeftSideFlippingLeft {
 				animation: flippable-from-right-on-left-side-flipping-left ${this.animationDurationMs / 1000}s forwards;
@@ -569,11 +594,17 @@ class FlipperManager extends DefaultViewManager {
 		`;
 
 		const styleElementId = "dynamic-flipper-css";
-		const style = document.getElementById(styleElementId) || document.createElement("style");
-		style.id = "dynamic-flipper-css";
-		style.innerHTML = css;
-		document.head.appendChild(style);
+		let styleElement = document.getElementById(styleElementId);
+		const isElementAlreadyCreated = !!styleElement;
+		if (!isElementAlreadyCreated) {
+			styleElement = document.createElement("style");
+			styleElement.id = "dynamic-flipper-css";
+		}
+		styleElement.innerHTML = css;
 
+		if (!isElementAlreadyCreated) {
+			document.head.appendChild(styleElement);
+		}
 	}
 
 
