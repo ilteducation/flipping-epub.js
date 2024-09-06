@@ -7,7 +7,6 @@ const VIEW_FLIPPING_STATE = {
     FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE: 'flippableFromLeftOnRightSide',
     FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT: 'flippableFromLeftOnRightSideFlippingRight',
 
-
     READABLE_PAGE_LEFT: 'readablePageLeft',
     LEFT_PAGE_FLIPPING_TO_RIGHT: 'leftPageFlippingToRight',
 

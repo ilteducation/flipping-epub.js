@@ -480,6 +480,9 @@ class FlipperManager extends DefaultViewManager {
 
 
 		return {
+			flippableFromLeftOnLeftSideFlippingRight: {
+				clipPath: `polygon(${xOffset}px ${height}px, 0px ${yOffset}px, 0 0, 0 ${height}px, ${pageWidth}px ${height}px)`
+			},
 			flippableFromLeftOnRightSideViewElement: {
 				transformOrigin: `${pageWidth - xOffset}px ${height}px`,
 				transform: `translate3d(${-1 * pageWidth + 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${-1 * angleRad}rad)`,
@@ -503,6 +506,7 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	generateDynamicCSS() {
+		let flippableFromLeftOnLeftSideFlippingRightKeyframes = "";
 		let flippableFromLeftOnRightSideFlippingRightKeyframes = "";
 		let leftTopPageFlippingRightKeyFrames = "";
 		let rightTopPageFlippingLeftKeyFrames = "";
@@ -516,6 +520,11 @@ class FlipperManager extends DefaultViewManager {
 
 			const animationStyles = this.getFlippingAnimationStyles(progression);
 
+			flippableFromLeftOnLeftSideFlippingRightKeyframes += `
+				${progression * 100}% {
+					clip-path: ${animationStyles.flippableFromLeftOnLeftSideFlippingRight.clipPath};
+				}
+			`;
 
 			flippableFromLeftOnRightSideFlippingRightKeyframes += `
                 ${progression * 100}% {
@@ -552,6 +561,14 @@ class FlipperManager extends DefaultViewManager {
 		}
 
 		const css = `
+		
+			@keyframes flippable-from-left-on-left-side-flipping-right {
+				${flippableFromLeftOnLeftSideFlippingRightKeyframes}
+			}
+		
+			.flippableFromLeftOnLeftSideFlippingRight {
+				animation: flippable-from-left-on-left-side-flipping-right ${this.animationDurationMs / 1000}s forwards;
+			}
         
             @keyframes flippable-from-left-on-right-side-flipping-right {
                 ${flippableFromLeftOnRightSideFlippingRightKeyframes}
