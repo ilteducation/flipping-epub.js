@@ -149,6 +149,29 @@ class FlipperManager extends DefaultViewManager {
 		return view.display(this.request);
 	}
 
+	prepend(section, forceRight, viewFlippingState){
+		var view = this.createView(section, forceRight, viewFlippingState);
+
+		view.on(EVENTS.VIEWS.RESIZED, (bounds) => {
+			this.counter(bounds);
+		});
+
+		this.views.prepend(view);
+
+		view.onDisplayed = this.afterDisplayed.bind(this);
+		view.onResize = this.afterResized.bind(this);
+
+		view.on(EVENTS.VIEWS.AXIS, (axis) => {
+			this.updateAxis(axis);
+		});
+
+		view.on(EVENTS.VIEWS.WRITING_MODE, (mode) => {
+			this.updateWritingMode(mode);
+		});
+
+		return view.display(this.request);
+	}
+
 	currentLocation() {
 		return new Promise((resolve, reject) => {
 			const checkInterval = setInterval(() => {
@@ -409,13 +432,15 @@ class FlipperManager extends DefaultViewManager {
 
 		return this.q.enqueue(() => {
 			if (!this.findFlippableFromLeftOnRightSideView()) {
-				return this.append(leftPageMinusOne, true, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
+				console.log("rendering prev - 1");
+				return this.prepend(leftPageMinusOne, true, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
 			}
 		})
 			.then(() => {
 				if (leftPageMinusTwo && !this.findFlippableFromLeftOnLeftSideView()) {
+					console.log("rendering prev - 2");
 					return this.q.enqueue(() => {
-						return this.append(leftPageMinusTwo, false, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
+						return this.prepend(leftPageMinusTwo, false, VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
 					});
 				}
 			});
