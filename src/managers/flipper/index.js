@@ -10,7 +10,7 @@ class FlipperManager extends DefaultViewManager {
 		super(options);
 
 		this.name = "flipper";
-		this.animationDurationMs = 2400;
+		this.animationDurationMs = 600;
 		this.assumedFPS = 60;
 		this.numberOfFrames = this.animationDurationMs / 1000 * this.assumedFPS;
 
@@ -605,6 +605,12 @@ class FlipperManager extends DefaultViewManager {
 			 `;
 		}
 
+		/**
+		 * Bezier points for animation timing function
+		 */
+		const p1 = { x: 0.57, y: 0.14 };
+		const p2 = { x: 0.71, y: 0.29 };
+
 		const css = `
 		
 			@keyframes flippable-from-left-on-left-side-flipping-right {
@@ -613,6 +619,7 @@ class FlipperManager extends DefaultViewManager {
 		
 			.flippableFromLeftOnLeftSideFlippingRight {
 				animation: flippable-from-left-on-left-side-flipping-right ${this.animationDurationMs / 1000}s forwards;
+				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
 			}
         
             @keyframes flippable-from-left-on-right-side-flipping-right {
@@ -622,6 +629,8 @@ class FlipperManager extends DefaultViewManager {
             .flippableFromLeftOnRightSideFlippingRight {
                 z-index: 1;
                 animation: flippable-from-left-on-right-side-flipping-right ${this.animationDurationMs / 1000}s forwards;
+				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+                
             }
         
             @keyframes left-top-page-flipping-right {
@@ -630,6 +639,7 @@ class FlipperManager extends DefaultViewManager {
 			
 			.leftPageFlippingToRight{
 				animation: left-top-page-flipping-right ${this.animationDurationMs / 1000}s forwards;
+				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
 			}
 			
 			@keyframes right-top-page-flipping-left {
@@ -637,14 +647,16 @@ class FlipperManager extends DefaultViewManager {
 			}
 			.rightPageFlippingToLeft {
 				animation: right-top-page-flipping-left ${this.animationDurationMs / 1000}s forwards;
+				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
 			}
 			
 			@keyframes flippable-from-right-on-left-side-flipping-left {
-			${flippableFromRightOnLeftSideFlippingLeftKeyFrames}
+				${flippableFromRightOnLeftSideFlippingLeftKeyFrames}
 			}
 			.flippableFromRightOnLeftSideFlippingLeft {
 				z-index: 1;
 				animation: flippable-from-right-on-left-side-flipping-left ${this.animationDurationMs / 1000}s forwards;
+				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
 			}
 			
 			@keyframes flippable-from-right-on-right-side-flipping-left {
@@ -653,6 +665,7 @@ class FlipperManager extends DefaultViewManager {
 			
 			.flippableFromRightOnRightSideFlippingLeft {
 		        animation: flippable-from-right-on-right-side-flipping-left ${this.animationDurationMs / 1000}s forwards;
+				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
 			}
 		`;
 
