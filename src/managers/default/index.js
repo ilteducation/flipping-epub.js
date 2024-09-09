@@ -528,7 +528,7 @@ class DefaultViewManager {
 						this.settings.axis === "horizontal" &&
 						this.settings.direction === "rtl" &&
 						this.settings.rtlScrollType === "default") {
-						
+
 						this.scrollTo(this.container.scrollWidth, 0, true);
 					}
 					this.views.show();
