@@ -320,6 +320,14 @@ class FlipperManager extends DefaultViewManager {
 			flippableFromLeftOnLeftSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT);
 		}
 
+		const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
+		const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
+		const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
+
+		outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingRightClass);
+		outsideShadowElement.classList.add(this.outsideShadowFlippingRightClass);
+		bendingShadowElement.classList.add(this.bendingShadowFlippingRightClass);
+
 		// Changing stuff after the animation
 		setTimeout(() => {
 
@@ -352,6 +360,10 @@ class FlipperManager extends DefaultViewManager {
 			if (flippingPageOnLeftSide) {
 				flippingPageOnLeftSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
 			}
+
+			outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingRightClass);
+			outsideShadowElement.classList.remove(this.outsideShadowFlippingRightClass);
+			bendingShadowElement.classList.remove(this.bendingShadowFlippingRightClass);
 
 			this.isFlipping = false;
 		}, this.animationDurationMs);
@@ -632,7 +644,6 @@ class FlipperManager extends DefaultViewManager {
 				}px 5px rgba(0, 0, 0, ${0.5 * shadowWidthRatio}))`,
 			},
 
-
 		};
 	}
 
@@ -644,7 +655,10 @@ class FlipperManager extends DefaultViewManager {
 		let flippableFromRightOnLeftSideFlippingLeftKeyFrames = "";
 		let flippableFromRightOnRightSideFlippingLeftKeyFrames = "";
 		let shadowWrapperFlippingLeftKeyframes = "";
+		let shadowWrapperFlippingRightKeyframes = "";
 		let shadowElementFlippingLeftKeyframes = "";
+		let shadowElementFlippingRightKeyframes = "";
+
 
 		for (let frame = 0; frame <= this.numberOfFrames; frame++) {
 
@@ -701,9 +715,23 @@ class FlipperManager extends DefaultViewManager {
 			 }
 			 `;
 
+			shadowElementFlippingRightKeyframes += `
+			 ${progression * 100}% {
+			 	transform-origin: ${animationStyles.flippableFromLeftOnRightSideViewElement.transformOrigin};
+			 	transform: ${animationStyles.flippableFromLeftOnRightSideViewElement.transform};
+			 	clip-path: ${animationStyles.flippableFromLeftOnRightSideViewElement.clipPath};
+			 	opacity: ${animationStyles.outsideShadowElement.opacity};
+			 }
+			`;
+
 			shadowWrapperFlippingLeftKeyframes += `
 			 ${progression * 100}% {
 			 	filter: ${animationStyles.outsideShadowWrapperElementFlippingLeft.filter};
+			 }`;
+
+			shadowWrapperFlippingRightKeyframes += `
+			 ${progression * 100}% {
+			 	filter: ${animationStyles.outsideShadowWrapperElementFlippingRight.filter};
 			 }`;
 		}
 
@@ -784,6 +812,18 @@ class FlipperManager extends DefaultViewManager {
 				background-color: red;
 			}
 			
+			@keyframes outside-shadow-flipping-right-animation {
+				${shadowElementFlippingRightKeyframes}
+			}
+				
+			.${this.outsideShadowFlippingRightClass} {
+				animation: outside-shadow-flipping-right-animation ${this.animationDurationMs / 1000}s forwards;
+				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+				width: ${pageWidth}px;
+				height: ${height}px;
+				background-color: green;
+			}
+			
 			@keyframes outside-shadow-wrapper-flipping-left-animation {
 				${shadowWrapperFlippingLeftKeyframes}
 			}
@@ -793,6 +833,17 @@ class FlipperManager extends DefaultViewManager {
 				animation: outside-shadow-wrapper-flipping-left-animation ${this.animationDurationMs / 1000}s forwards;
 				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
 			}
+			
+			@keyframes outside-shadow-wrapper-flipping-right-animation {
+				${shadowWrapperFlippingRightKeyframes}
+			}
+			
+			.${this.outsideShadowWrapperFlippingRightClass} {
+				z-index: 2;
+				animation: outside-shadow-wrapper-flipping-right-animation ${this.animationDurationMs / 1000}s forwards;
+				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+			}
+			
 		`;
 
 		const styleElementId = "dynamic-flipper-css";
