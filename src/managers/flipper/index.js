@@ -10,11 +10,22 @@ class FlipperManager extends DefaultViewManager {
 		super(options);
 
 		this.name = "flipper";
-		this.animationDurationMs = 600;
+		this.animationDurationMs = 2400;
 		this.assumedFPS = 60;
 		this.numberOfFrames = this.animationDurationMs / 1000 * this.assumedFPS;
 
 		this.isFlipping = false;
+
+		this.outsideShadowWrapperId = "outside-shadow-wrapper";
+		this.outsideShadowElementId = "outside-shadow";
+		this.bendingShadowElementId = "bending-shadow";
+
+		this.outsideShadowWrapperFlippingLeftClass = "outside-shadow-wrapper-flipping-left";
+		this.outsideShadowWrapperFlippingRightClass = "outside-shadow-wrapper-flipping-right";
+		this.outsideShadowFlippingLeftClass = "outside-shadow-flipping-left";
+		this.outsideShadowFlippingRightClass = "outside-shadow-flipping-right";
+		this.bendingShadowFlippingLeftClass = "bending-shadow-flipping-left";
+		this.bendingShadowFlippingRightClass = "bending-shadow-flipping-right";
 	}
 
 	isRightToLeft() {
@@ -23,6 +34,41 @@ class FlipperManager extends DefaultViewManager {
 
 	createView(section, forceRight, viewFlippingState) {
 		return new this.View(section, extend(this.viewSettings, {forceRight, viewFlippingState}));
+	}
+
+	createOutsideShadow() {
+		// Why we need two elements for the drop shadow - https://css-tricks.com/using-box-shadows-and-clip-path-together/
+		const outsideShadowWrapper = document.createElement("div");
+		outsideShadowWrapper.id = this.outsideShadowWrapperId;
+		outsideShadowWrapper.style.position = "absolute";
+		outsideShadowWrapper.style.left = "0";
+
+		const outsideShadow = document.createElement("div");
+		outsideShadow.id = this.outsideShadowElementId;
+
+		outsideShadowWrapper.appendChild(outsideShadow);
+
+		this.container.appendChild(outsideShadowWrapper);
+	}
+
+	createBendingShadow() {
+		const bendingShadow = document.createElement("div");
+		bendingShadow.id = this.bendingShadowElementId;
+		bendingShadow.style.position = "absolute";
+		bendingShadow.style.left = "0";
+
+		this.container.appendChild(bendingShadow);
+	}
+
+	createAnimationShadows() {
+		this.createOutsideShadow();
+		this.createBendingShadow();
+	}
+
+	render(element, size) {
+		super.render(element, size);
+
+		this.createAnimationShadows();
 	}
 
 	display(section, target) {
@@ -206,6 +252,14 @@ class FlipperManager extends DefaultViewManager {
 			flippableFromRightOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT);
 		}
 
+		const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
+		const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
+		const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
+
+		outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingLeftClass);
+		outsideShadowElement.classList.add(this.outsideShadowFlippingLeftClass);
+		bendingShadowElement.classList.add(this.bendingShadowFlippingLeftClass);
+
 		// Changing stuff after the animation
 		setTimeout(() => {
 			const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
@@ -237,6 +291,10 @@ class FlipperManager extends DefaultViewManager {
 			if (flippingPageOnRightSide) {
 				flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
 			}
+
+			outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingLeftClass);
+			outsideShadowElement.classList.remove(this.outsideShadowFlippingLeftClass);
+			bendingShadowElement.classList.remove(this.bendingShadowFlippingLeftClass);
 
 			this.isFlipping = false;
 
@@ -510,7 +568,6 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	getFlippingAnimationStyles(progression) {
-
 		const pageSize = this.getPageSize();
 		const {width: pageWidth, height} = pageSize;
 
@@ -522,6 +579,20 @@ class FlipperManager extends DefaultViewManager {
 
 		// yOffset = how much we fold the page on the vertical axis
 		const yOffset = height - xOffset * Math.tan((Math.PI - angleRad) / 2);
+
+		const maxShadowWidthStep = 0.5;
+
+		const shadowWidthRatio =
+			progression < maxShadowWidthStep
+				? progression / maxShadowWidthStep
+				: (1 - progression) / (1 - maxShadowWidthStep);
+
+		const shadowIntensity =
+			0.5 +
+			0.3 *
+			(progression < maxShadowWidthStep
+				? (maxShadowWidthStep - progression) / maxShadowWidthStep
+				: (progression - maxShadowWidthStep) / (1 - maxShadowWidthStep));
 
 
 		return {
@@ -546,7 +617,22 @@ class FlipperManager extends DefaultViewManager {
 			},
 			flippableFromRightOnRightSideViewElement: {
 				clipPath: `polygon(${pageWidth - xOffset}px ${height}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px 0, ${pageWidth}px ${height}px, 0 ${height}px)`
-			}
+			},
+			outsideShadowElement: {
+				opacity: shadowIntensity,
+			},
+			outsideShadowWrapperElementFlippingLeft: {
+				filter: `drop-shadow(${-1 * 20 * shadowWidthRatio}px ${
+					10 * shadowWidthRatio
+				}px 5px rgba(0, 0, 0, ${0.5 * shadowWidthRatio}))`,
+			},
+			outsideShadowWrapperElementFlippingRight: {
+				filter: `drop-shadow(${20 * shadowWidthRatio}px ${
+					10 * shadowWidthRatio
+				}px 5px rgba(0, 0, 0, ${0.5 * shadowWidthRatio}))`,
+			},
+
+
 		};
 	}
 
@@ -557,6 +643,8 @@ class FlipperManager extends DefaultViewManager {
 		let rightTopPageFlippingLeftKeyFrames = "";
 		let flippableFromRightOnLeftSideFlippingLeftKeyFrames = "";
 		let flippableFromRightOnRightSideFlippingLeftKeyFrames = "";
+		let shadowWrapperFlippingLeftKeyframes = "";
+		let shadowElementFlippingLeftKeyframes = "";
 
 		for (let frame = 0; frame <= this.numberOfFrames; frame++) {
 
@@ -603,6 +691,20 @@ class FlipperManager extends DefaultViewManager {
 			 	clip-path: ${animationStyles.flippableFromRightOnRightSideViewElement.clipPath};
 			 }
 			 `;
+
+			shadowElementFlippingLeftKeyframes += `
+			 ${progression * 100}% {
+			 	transform-origin: ${animationStyles.flippableFromRightOnLeftSideViewElement.transformOrigin};
+			 	transform: ${animationStyles.flippableFromRightOnLeftSideViewElement.transform};
+			 	clip-path: ${animationStyles.flippableFromRightOnLeftSideViewElement.clipPath};
+			 	opacity: ${animationStyles.outsideShadowElement.opacity};
+			 }
+			 `;
+
+			shadowWrapperFlippingLeftKeyframes += `
+			 ${progression * 100}% {
+			 	filter: ${animationStyles.outsideShadowWrapperElementFlippingLeft.filter};
+			 }`;
 		}
 
 		/**
@@ -610,6 +712,8 @@ class FlipperManager extends DefaultViewManager {
 		 */
 		const p1 = { x: 0.57, y: 0.14 };
 		const p2 = { x: 0.71, y: 0.29 };
+		const pageSize = this.getPageSize();
+		const {width: pageWidth, height} = pageSize;
 
 		const css = `
 		
@@ -665,6 +769,28 @@ class FlipperManager extends DefaultViewManager {
 			
 			.flippableFromRightOnRightSideFlippingLeft {
 		        animation: flippable-from-right-on-right-side-flipping-left ${this.animationDurationMs / 1000}s forwards;
+				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+			}
+			
+			@keyframes outside-shadow-flipping-left-animation {
+				${shadowElementFlippingLeftKeyframes}
+			}
+				
+			.${this.outsideShadowFlippingLeftClass} {
+				animation: outside-shadow-flipping-left-animation ${this.animationDurationMs / 1000}s forwards;
+				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+				width: ${pageWidth}px;
+				height: ${height}px;
+				background-color: red;
+			}
+			
+			@keyframes outside-shadow-wrapper-flipping-left-animation {
+				${shadowWrapperFlippingLeftKeyframes}
+			}
+			
+			.${this.outsideShadowWrapperFlippingLeftClass} {
+				z-index: 2;
+				animation: outside-shadow-wrapper-flipping-left-animation ${this.animationDurationMs / 1000}s forwards;
 				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
 			}
 		`;

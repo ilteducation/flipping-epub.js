@@ -9,7 +9,6 @@
     <script src="../dist/epub.js"></script>
 
     <link rel="stylesheet" type="text/css" href="examples.css">
-    <link rel="stylesheet" type="text/css" href="../src/managers/views/flippingpages.css">
 
 </head>
 <body>
@@ -159,7 +158,6 @@
 
     });
 
-
     const progressInput = document.getElementById("progress-slider");
     progressInput.addEventListener("input", (event) => {
         const progressValue = event.target.value;
@@ -168,12 +166,9 @@
             return;
         }
 
-
         rendition.manager.setPageFlipAnimationProgress(progressValue / 100);
 
     });
-
-
 
 </script>
 
