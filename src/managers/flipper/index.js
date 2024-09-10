@@ -579,6 +579,34 @@ class FlipperManager extends DefaultViewManager {
 		return bodyRect;
 	}
 
+	/**
+	 *
+	 * @param progression
+	 * @param targetDirection 'LEFT' or 'RIGHT'
+	 * @param angleRad The rotation angle of the flipped page in radians
+	 * @returns {string}
+	 */
+	getBendingShadowBackground(progression, targetDirection, angleRad) {
+
+		const bendingShadowRotationRad =
+			targetDirection === 'LEFT' ? (Math.PI - angleRad) / 2 : (Math.PI + angleRad) / 2;
+
+		let shineLocation = Math.min(5 + progression * progression * 100, 100);
+		if (targetDirection === 'RIGHT') {
+			shineLocation = 100 - shineLocation;
+		}
+
+		const shineOffset = 5;
+
+		return `linear-gradient(${bendingShadowRotationRad}rad,
+        rgba(255, 255, 255, 0.0) ${Math.min(Math.max(0, shineLocation - 2 * shineOffset), 100)}%,
+        rgba(209, 209, 215, 0.8) ${Math.min(Math.max(0, shineLocation - shineOffset), 100)}%,
+        rgba(255, 255, 255, 0.8) ${Math.min(Math.max(0, shineLocation), 100)}%,
+        rgba(182, 178, 178, 0.8) ${Math.min(Math.max(0, shineLocation + shineOffset), 100)}%,
+        rgba(255, 255, 255, 0.0) ${Math.min(Math.max(0, shineLocation + 2 * shineOffset), 100)}%
+        )`;
+	}
+
 	getFlippingAnimationStyles(progression) {
 		const pageSize = this.getPageSize();
 		const {width: pageWidth, height} = pageSize;
@@ -605,7 +633,6 @@ class FlipperManager extends DefaultViewManager {
 			(progression < maxShadowWidthStep
 				? (maxShadowWidthStep - progression) / maxShadowWidthStep
 				: (progression - maxShadowWidthStep) / (1 - maxShadowWidthStep));
-
 
 		return {
 			flippableFromLeftOnLeftSideFlippingRight: {
@@ -643,7 +670,14 @@ class FlipperManager extends DefaultViewManager {
 					10 * shadowWidthRatio
 				}px 5px rgba(0, 0, 0, ${0.5 * shadowWidthRatio}))`,
 			},
-
+			bendingShadowFLippingLeft: {
+				background: this.getBendingShadowBackground(progression, 'LEFT', angleRad),
+				opacity: `${1 - progression}`
+			},
+			bendingShadowFlippingRight: {
+				background: this.getBendingShadowBackground(progression, 'RIGHT', angleRad),
+				opacity: `${1 - progression}`
+			}
 		};
 	}
 
@@ -658,6 +692,8 @@ class FlipperManager extends DefaultViewManager {
 		let shadowWrapperFlippingRightKeyframes = "";
 		let shadowElementFlippingLeftKeyframes = "";
 		let shadowElementFlippingRightKeyframes = "";
+		let bendingShadowFlippingLeftKeyframes = "";
+		let bendingShadowFlippingRightKeyframes = "";
 
 
 		for (let frame = 0; frame <= this.numberOfFrames; frame++) {
@@ -733,6 +769,26 @@ class FlipperManager extends DefaultViewManager {
 			 ${progression * 100}% {
 			 	filter: ${animationStyles.outsideShadowWrapperElementFlippingRight.filter};
 			 }`;
+
+			bendingShadowFlippingLeftKeyframes += `
+			 ${progression * 100}% {
+			 	transform-origin: ${animationStyles.flippableFromRightOnLeftSideViewElement.transformOrigin};
+			 	transform: ${animationStyles.flippableFromRightOnLeftSideViewElement.transform};
+			 	clip-path: ${animationStyles.flippableFromRightOnLeftSideViewElement.clipPath};
+			 	background: ${animationStyles.bendingShadowFLippingLeft.background};
+			 	opacity: ${animationStyles.bendingShadowFLippingLeft.opacity};
+			 }
+			`;
+
+			bendingShadowFlippingRightKeyframes += `
+			 ${progression * 100}% {
+			 	transform-origin: ${animationStyles.flippableFromLeftOnRightSideViewElement.transformOrigin};
+			 	transform: ${animationStyles.flippableFromLeftOnRightSideViewElement.transform};
+			 	clip-path: ${animationStyles.flippableFromLeftOnRightSideViewElement.clipPath};
+			 	background: ${animationStyles.bendingShadowFlippingRight.background};
+			 	opacity: ${animationStyles.bendingShadowFlippingRight.opacity};
+			 }
+			 `;
 		}
 
 		/**
@@ -743,6 +799,8 @@ class FlipperManager extends DefaultViewManager {
 		const pageSize = this.getPageSize();
 		const {width: pageWidth, height} = pageSize;
 
+		const animationTimingFunction = `cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y})`;
+
 		const css = `
 		
 			@keyframes flippable-from-left-on-left-side-flipping-right {
@@ -751,7 +809,7 @@ class FlipperManager extends DefaultViewManager {
 		
 			.flippableFromLeftOnLeftSideFlippingRight {
 				animation: flippable-from-left-on-left-side-flipping-right ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+				animation-timing-function: ${animationTimingFunction};
 			}
         
             @keyframes flippable-from-left-on-right-side-flipping-right {
@@ -761,8 +819,7 @@ class FlipperManager extends DefaultViewManager {
             .flippableFromLeftOnRightSideFlippingRight {
                 z-index: 1;
                 animation: flippable-from-left-on-right-side-flipping-right ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
-                
+				animation-timing-function: ${animationTimingFunction};
             }
         
             @keyframes left-top-page-flipping-right {
@@ -771,7 +828,7 @@ class FlipperManager extends DefaultViewManager {
 			
 			.leftPageFlippingToRight{
 				animation: left-top-page-flipping-right ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+				animation-timing-function: ${animationTimingFunction};
 			}
 			
 			@keyframes right-top-page-flipping-left {
@@ -779,7 +836,7 @@ class FlipperManager extends DefaultViewManager {
 			}
 			.rightPageFlippingToLeft {
 				animation: right-top-page-flipping-left ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+				animation-timing-function: ${animationTimingFunction};
 			}
 			
 			@keyframes flippable-from-right-on-left-side-flipping-left {
@@ -788,7 +845,7 @@ class FlipperManager extends DefaultViewManager {
 			.flippableFromRightOnLeftSideFlippingLeft {
 				z-index: 1;
 				animation: flippable-from-right-on-left-side-flipping-left ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+				animation-timing-function: ${animationTimingFunction};
 			}
 			
 			@keyframes flippable-from-right-on-right-side-flipping-left {
@@ -797,7 +854,7 @@ class FlipperManager extends DefaultViewManager {
 			
 			.flippableFromRightOnRightSideFlippingLeft {
 		        animation: flippable-from-right-on-right-side-flipping-left ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+				animation-timing-function: ${animationTimingFunction};
 			}
 			
 			@keyframes outside-shadow-flipping-left-animation {
@@ -806,10 +863,9 @@ class FlipperManager extends DefaultViewManager {
 				
 			.${this.outsideShadowFlippingLeftClass} {
 				animation: outside-shadow-flipping-left-animation ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+				animation-timing-function: ${animationTimingFunction};
 				width: ${pageWidth}px;
 				height: ${height}px;
-				background-color: red;
 			}
 			
 			@keyframes outside-shadow-flipping-right-animation {
@@ -818,7 +874,7 @@ class FlipperManager extends DefaultViewManager {
 				
 			.${this.outsideShadowFlippingRightClass} {
 				animation: outside-shadow-flipping-right-animation ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+				animation-timing-function: ${animationTimingFunction};
 				width: ${pageWidth}px;
 				height: ${height}px;
 				background-color: green;
@@ -831,7 +887,7 @@ class FlipperManager extends DefaultViewManager {
 			.${this.outsideShadowWrapperFlippingLeftClass} {
 				z-index: 2;
 				animation: outside-shadow-wrapper-flipping-left-animation ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+				animation-timing-function: ${animationTimingFunction};
 			}
 			
 			@keyframes outside-shadow-wrapper-flipping-right-animation {
@@ -841,7 +897,29 @@ class FlipperManager extends DefaultViewManager {
 			.${this.outsideShadowWrapperFlippingRightClass} {
 				z-index: 2;
 				animation: outside-shadow-wrapper-flipping-right-animation ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y});
+				animation-timing-function: ${animationTimingFunction};
+			}
+			
+			@keyframes bending-shadow-flipping-left-animation {
+				${bendingShadowFlippingLeftKeyframes}
+			}
+			.${this.bendingShadowFlippingLeftClass} {
+				z-index: 3;
+				width: ${pageWidth}px;
+				height: ${height}px;
+				animation: bending-shadow-flipping-left-animation ${this.animationDurationMs / 1000}s forwards;
+				animation-timing-function: ${animationTimingFunction};	
+			}
+			
+			@keyframes bending-shadow-flipping-right-animation {
+				${bendingShadowFlippingRightKeyframes}
+			}
+			.${this.bendingShadowFlippingRightClass} {
+				z-index: 3;
+				width: ${pageWidth}px;
+				height: ${height}px;
+				animation: bending-shadow-flipping-right-animation ${this.animationDurationMs / 1000}s forwards;
+				animation-timing-function: ${animationTimingFunction};
 			}
 			
 		`;
