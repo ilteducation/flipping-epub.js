@@ -817,7 +817,7 @@ class FlipperManager extends DefaultViewManager {
             }
         
             .flippableFromLeftOnRightSideFlippingRight {
-                z-index: 1;
+                z-index: 2;
                 animation: flippable-from-left-on-right-side-flipping-right ${this.animationDurationMs / 1000}s forwards;
 				animation-timing-function: ${animationTimingFunction};
             }
@@ -843,7 +843,7 @@ class FlipperManager extends DefaultViewManager {
 				${flippableFromRightOnLeftSideFlippingLeftKeyFrames}
 			}
 			.flippableFromRightOnLeftSideFlippingLeft {
-				z-index: 1;
+				z-index: 2;
 				animation: flippable-from-right-on-left-side-flipping-left ${this.animationDurationMs / 1000}s forwards;
 				animation-timing-function: ${animationTimingFunction};
 			}
@@ -866,6 +866,7 @@ class FlipperManager extends DefaultViewManager {
 				animation-timing-function: ${animationTimingFunction};
 				width: ${pageWidth}px;
 				height: ${height}px;
+				background-color: white;
 			}
 			
 			@keyframes outside-shadow-flipping-right-animation {
@@ -877,7 +878,7 @@ class FlipperManager extends DefaultViewManager {
 				animation-timing-function: ${animationTimingFunction};
 				width: ${pageWidth}px;
 				height: ${height}px;
-				background-color: green;
+				background-color: white;
 			}
 			
 			@keyframes outside-shadow-wrapper-flipping-left-animation {
@@ -885,7 +886,7 @@ class FlipperManager extends DefaultViewManager {
 			}
 			
 			.${this.outsideShadowWrapperFlippingLeftClass} {
-				z-index: 2;
+				z-index: 1;
 				animation: outside-shadow-wrapper-flipping-left-animation ${this.animationDurationMs / 1000}s forwards;
 				animation-timing-function: ${animationTimingFunction};
 			}
@@ -895,7 +896,7 @@ class FlipperManager extends DefaultViewManager {
 			}
 			
 			.${this.outsideShadowWrapperFlippingRightClass} {
-				z-index: 2;
+				z-index: 1;
 				animation: outside-shadow-wrapper-flipping-right-animation ${this.animationDurationMs / 1000}s forwards;
 				animation-timing-function: ${animationTimingFunction};
 			}
