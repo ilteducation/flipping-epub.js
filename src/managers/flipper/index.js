@@ -10,7 +10,7 @@ class FlipperManager extends DefaultViewManager {
 		super(options);
 
 		this.name = "flipper";
-		this.animationDurationMs = 2400;
+		this.animationDurationMs = 800;
 		this.assumedFPS = 60;
 		this.numberOfFrames = this.animationDurationMs / 1000 * this.assumedFPS;
 
@@ -235,7 +235,7 @@ class FlipperManager extends DefaultViewManager {
 
 	flipFromRightToLeft() {
 		this.isFlipping = true;
-		
+
 		const rightVisibleView = this.findRightVisibleView();
 		const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView();
 
@@ -379,7 +379,7 @@ class FlipperManager extends DefaultViewManager {
 			return;
 		}
 
-		if(this.isRightToLeft()) {
+		if (this.isRightToLeft()) {
 			this.flipFromLeftToRight();
 		} else {
 			this.flipFromRightToLeft();
@@ -398,7 +398,7 @@ class FlipperManager extends DefaultViewManager {
 			return;
 		}
 
-		if(this.isRightToLeft()) {
+		if (this.isRightToLeft()) {
 			this.flipFromRightToLeft();
 		} else {
 			this.flipFromLeftToRight();
@@ -425,7 +425,7 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	getCurrentPlusOneFlippableState() {
-		if(this.isRightToLeft()) {
+		if (this.isRightToLeft()) {
 			return VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE;
 		}
 
@@ -437,7 +437,7 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	getCurrentPlusTwoFlippableState() {
-		if(this.isRightToLeft()) {
+		if (this.isRightToLeft()) {
 			return VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE;
 		}
 
@@ -473,7 +473,7 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	getCurrentMinusTwoFlippableState() {
-		if(this.isRightToLeft()) {
+		if (this.isRightToLeft()) {
 			return VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE;
 		}
 
@@ -485,7 +485,7 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	getCurrentMinusOneFlippableState() {
-		if(this.isRightToLeft()) {
+		if (this.isRightToLeft()) {
 			return VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE;
 		}
 
@@ -506,8 +506,8 @@ class FlipperManager extends DefaultViewManager {
 
 	renderUnderPages() {
 		/*
-			Most likely the user is going to "next" page, advancing in the book, so we want to render those pages first.
-		 */
+            Most likely the user is going to "next" page, advancing in the book, so we want to render those pages first.
+         */
 
 		return Promise.all([
 			this.renderNextUnderPages(),
@@ -571,28 +571,31 @@ class FlipperManager extends DefaultViewManager {
 		/*
             The actual book page might be smaller
          */
+		const firstView = this.views.first();
+		const bodyElement = firstView.getBodyElement();
+		const bodyRectangle = bodyElement.getBoundingClientRect();
+		const diffBetweenIframeWidthAndBodyWidth = firstView.getDiffBetweenIframeAndBodyWidth();
 
-		const bodyElement = this.views.first().iframe.contentDocument.querySelector("body");
-
-		const bodyRect = bodyElement.getBoundingClientRect();
-
-		return bodyRect;
+		return {
+			width: bodyRectangle.width,
+			height: bodyRectangle.height,
+			diffBetweenIframeWidthAndBodyWidth: diffBetweenIframeWidthAndBodyWidth
+		};
 	}
 
 	/**
-	 *
-	 * @param progression
-	 * @param targetDirection 'LEFT' or 'RIGHT'
-	 * @param angleRad The rotation angle of the flipped page in radians
-	 * @returns {string}
-	 */
+     * @param progression
+     * @param targetDirection 'LEFT' or 'RIGHT'
+     * @param angleRad The rotation angle of the flipped page in radians
+     * @returns {string}
+     */
 	getBendingShadowBackground(progression, targetDirection, angleRad) {
 
 		const bendingShadowRotationRad =
-			targetDirection === 'LEFT' ? (Math.PI - angleRad) / 2 : (Math.PI + angleRad) / 2;
+            targetDirection === "LEFT" ? (Math.PI - angleRad) / 2 : (Math.PI + angleRad) / 2;
 
 		let shineLocation = Math.min(5 + progression * progression * 100, 100);
-		if (targetDirection === 'RIGHT') {
+		if (targetDirection === "RIGHT") {
 			shineLocation = 100 - shineLocation;
 		}
 
@@ -609,7 +612,7 @@ class FlipperManager extends DefaultViewManager {
 
 	getFlippingAnimationStyles(progression) {
 		const pageSize = this.getPageSize();
-		const {width: pageWidth, height} = pageSize;
+		const {width: pageWidth, height, diffBetweenIframeWidthAndBodyWidth} = pageSize;
 
 		const startingAngleRad = Math.PI / 6;
 		const progressionBreakPoint = 0.15;
@@ -617,8 +620,8 @@ class FlipperManager extends DefaultViewManager {
 		const xOffset = progression * pageWidth;
 		const angleRad = progression <= progressionBreakPoint ? startingAngleRad : ((1 - progression) / (1 - progressionBreakPoint)) * startingAngleRad;
 
-		// yOffset = how much we fold the page on the vertical axis
-		const yOffset = height - xOffset * Math.tan((Math.PI - angleRad) / 2);
+		// yOffset = how much is left after we fold the page on the vertical axis
+		const yOffset = height - (xOffset) * Math.tan((Math.PI - angleRad) / 2);
 
 		const maxShadowWidthStep = 0.5;
 
@@ -628,15 +631,15 @@ class FlipperManager extends DefaultViewManager {
 				: (1 - progression) / (1 - maxShadowWidthStep);
 
 		const shadowIntensity =
-			0.5 +
-			0.3 *
-			(progression < maxShadowWidthStep
-				? (maxShadowWidthStep - progression) / maxShadowWidthStep
-				: (progression - maxShadowWidthStep) / (1 - maxShadowWidthStep));
+            0.5 +
+            0.3 *
+            (progression < maxShadowWidthStep
+            	? (maxShadowWidthStep - progression) / maxShadowWidthStep
+            	: (progression - maxShadowWidthStep) / (1 - maxShadowWidthStep));
 
 		return {
 			flippableFromLeftOnLeftSideFlippingRight: {
-				clipPath: `polygon(${xOffset}px ${height}px, 0px ${yOffset}px, 0 0, 0 ${height}px, ${pageWidth}px ${height}px)`
+				clipPath: `polygon(${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px 0, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px ${height}px)`
 			},
 			flippableFromLeftOnRightSideViewElement: {
 				transformOrigin: `${pageWidth - xOffset}px ${height}px`,
@@ -644,15 +647,15 @@ class FlipperManager extends DefaultViewManager {
 				clipPath: `polygon(${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, ${pageWidth}px ${height}px)`
 			},
 			leftViewElement: {
-				clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${height}px, ${xOffset}px ${height}px, 0 ${yOffset}px)`,
+				clipPath: `polygon(${diffBetweenIframeWidthAndBodyWidth}px 0, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px 0, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px)`,
 			},
 			rightViewElement: {
 				clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, 0 ${height}px)`,
 			},
 			flippableFromRightOnLeftSideViewElement: {
-				transformOrigin: `${xOffset}px ${height}px`,
+				transformOrigin: `${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px`,
 				transform: `translate3d(${2 * pageWidth - 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${angleRad}rad)`,
-				clipPath: `polygon(0 ${yOffset}px, 0 ${yOffset}px, 0 ${yOffset}px, ${xOffset}px ${height}px, 0 ${height}px)`
+				clipPath: `polygon(${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px)`
 			},
 			flippableFromRightOnRightSideViewElement: {
 				clipPath: `polygon(${pageWidth - xOffset}px ${height}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px 0, ${pageWidth}px ${height}px, 0 ${height}px)`
@@ -671,11 +674,11 @@ class FlipperManager extends DefaultViewManager {
 				}px 5px rgba(0, 0, 0, ${0.5 * shadowWidthRatio}))`,
 			},
 			bendingShadowFLippingLeft: {
-				background: this.getBendingShadowBackground(progression, 'LEFT', angleRad),
+				background: this.getBendingShadowBackground(progression, "LEFT", angleRad),
 				opacity: `${1 - progression}`
 			},
 			bendingShadowFlippingRight: {
-				background: this.getBendingShadowBackground(progression, 'RIGHT', angleRad),
+				background: this.getBendingShadowBackground(progression, "RIGHT", angleRad),
 				opacity: `${1 - progression}`
 			}
 		};
@@ -792,10 +795,10 @@ class FlipperManager extends DefaultViewManager {
 		}
 
 		/**
-		 * Bezier points for animation timing function
-		 */
-		const p1 = { x: 0.57, y: 0.14 };
-		const p2 = { x: 0.71, y: 0.29 };
+         * Bezier points for animation timing function
+         */
+		const p1 = {x: 0.57, y: 0.14};
+		const p2 = {x: 0.71, y: 0.29};
 		const pageSize = this.getPageSize();
 		const {width: pageWidth, height} = pageSize;
 
