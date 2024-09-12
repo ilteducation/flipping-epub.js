@@ -10,7 +10,7 @@ class FlipperManager extends DefaultViewManager {
 		super(options);
 
 		this.name = "flipper";
-		this.animationDurationMs = 800;
+		this.animationDurationMs = 3000;
 		this.assumedFPS = 60;
 		this.numberOfFrames = this.animationDurationMs / 1000 * this.assumedFPS;
 
@@ -643,7 +643,7 @@ class FlipperManager extends DefaultViewManager {
 			},
 			flippableFromLeftOnRightSideViewElement: {
 				transformOrigin: `${pageWidth - xOffset}px ${height}px`,
-				transform: `translate3d(${-1 * pageWidth + 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${-1 * angleRad}rad)`,
+				transform: `translate3d(${-1 * pageWidth  + diffBetweenIframeWidthAndBodyWidth + 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${-1 * angleRad}rad)`,
 				clipPath: `polygon(${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, ${pageWidth}px ${height}px)`
 			},
 			leftViewElement: {
