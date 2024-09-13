@@ -160,6 +160,14 @@ class FlipperManager extends DefaultViewManager {
          */
 		if (section.index === 0 && !this.isRightToLeft()) {
 			viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT;
+		} else {
+			/* The target is always for the left page.
+			But if the left page has already been added, we need to add the right page.
+			 */
+			// TODO - test and handle Right to left books
+			if(this.views.all().some(view => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT)) {
+				viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT;
+			}
 		}
 
 		var view = this.createView(section, forceRight, viewFlippingState);
