@@ -222,17 +222,6 @@ class FlipperManager extends DefaultViewManager {
 		return view.display(this.request);
 	}
 
-	currentLocation() {
-		return new Promise((resolve, reject) => {
-			const checkInterval = setInterval(() => {
-				if (!this.isFlipping) {
-					clearInterval(checkInterval);
-					resolve(super.currentLocation());
-				}
-			}, 100);
-		});
-	}
-
 	flipFromRightToLeft() {
 		this.isFlipping = true;
 
@@ -944,20 +933,40 @@ class FlipperManager extends DefaultViewManager {
 
 
 	/**
-     * Used for calculating location
-     *
-     * @param view
-     * @param offsetPrev
-     * @param offsetNext
-     * @param _container
-     * @returns {boolean}
-     */
+	 * Used for calculating location.
+	 * The manager checks for visible pages to determine location, so we consider visible only the static 2 pages.
+	 *
+	 * If the player is currently flipping, we consider the next pages that will be shown - the flipping pages.
+	 * If the player is not flipping, we consider the "static" two pages.
+	 *
+	 * @param view
+	 * @param offsetPrev
+	 * @param offsetNext
+	 * @param _container
+	 * @returns {boolean}
+	 */
 	isVisible(view, offsetPrev, offsetNext, _container) {
-		if (![VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT, VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT].includes(view.viewFlippingState)) {
-			return false;
+		if (this.isFlipping) {
+			/**
+			 * In theory, only two pages should be considered visible at a time.
+			 * But since the player can NOT flip both left and right at the same time, it is ok
+			 * to consider all possible next flipping pages as visible.
+			 *
+			 * The pages that WERE visible but now are flipping are not considered, because they will not visible anymore.
+			 *
+			 */
+			return [
+				VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT,
+				VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT,
+				VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT,
+				VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT,
+			].includes(view.viewFlippingState);
 		}
 
-		return super.isVisible(view, offsetPrev, offsetNext, _container);
+		// Player static, not flipping
+		return [VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT, VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT].includes(
+			view.viewFlippingState
+		);
 	}
 
 	/*
