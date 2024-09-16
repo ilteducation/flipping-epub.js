@@ -10,7 +10,7 @@ class FlipperManager extends DefaultViewManager {
 		super(options);
 
 		this.name = "flipper";
-		this.animationDurationMs = 3000;
+		this.animationDurationMs = 800;
 		this.assumedFPS = 60;
 		this.numberOfFrames = this.animationDurationMs / 1000 * this.assumedFPS;
 
@@ -138,10 +138,8 @@ class FlipperManager extends DefaultViewManager {
 
 			}.bind(this))
 			.then(() => {
-				return this.renderUnderPages();
-			})
-			.then(() => {
-				return this.generateDynamicCSS();
+				this.renderUnderPages();
+				this.generateDynamicCSS();
 			});
 		// .then(function(){
 		// 	return this.hooks.display.trigger(view);
@@ -153,21 +151,33 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	add(section, forceRight) {
-		let viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT;
+		let viewFlippingState = this.isRightToLeft() ? VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT : VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT;
 
 		/*
-             The cover will always be on the right side
+             The cover will always be on the right side. Or left, if RTL
          */
-		if (section.index === 0 && !this.isRightToLeft()) {
-			viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT;
+		if (section.index === 0) {
+			if (this.isRightToLeft()) {
+				viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT;
+			} else {
+				viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT;
+			}
 		} else {
 			/* The target is always for the left page.
 			But if the left page has already been added, we need to add the right page.
+
+			Reverse for RTL
 			 */
 			// TODO - test and handle Right to left books
 			if(this.views.all().some(view => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT)) {
 				viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT;
 			}
+			if(this.isRightToLeft()) {
+				if(this.views.all().some(view => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT)) {
+					viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT;
+				}
+			}
+
 		}
 
 		var view = this.createView(section, forceRight, viewFlippingState);
@@ -430,7 +440,9 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	findCurrentPlusOneView() {
-		return this.views.displayed().find((view) => view.viewFlippingState === this.getCurrentPlusOneFlippableState());
+		const displayedViews = this.views.displayed();
+		const plusOneView = displayedViews.find((view) => view.viewFlippingState === this.getCurrentPlusOneFlippableState());
+		return plusOneView;
 	}
 
 	getCurrentPlusTwoFlippableState() {
@@ -505,70 +517,53 @@ class FlipperManager extends DefaultViewManager {
 		/*
             Most likely the user is going to "next" page, advancing in the book, so we want to render those pages first.
          */
-
-		return Promise.all([
-			this.renderNextUnderPages(),
-			this.renderPreviousUnderPages()
-		]);
+		this.renderNextUnderPages();
+		this.renderPreviousUnderPages();
 	}
 
 	renderNextUnderPages() {
 		const lastView = this.views.last();
 		const currentPlusOneSection = lastView && lastView.section.next();
 		if (!currentPlusOneSection) {
-			return Promise.resolve();
+			return;
 		}
 
 		const currentPagePlusTwoSection = currentPlusOneSection.next();
 
-		return this.q.enqueue(() => {
-			if (!this.findCurrentPlusOneView()) {
-				return this.append(currentPlusOneSection, this.isRightToLeft(), this.getCurrentPlusOneFlippableState());
-			}
-		})
-			.then(() => {
-				if (currentPagePlusTwoSection && !this.findCurrentPlusTwoView()) {
-					return this.q.enqueue(() => {
-						return this.append(currentPagePlusTwoSection, true, this.getCurrentPlusTwoFlippableState());
-					});
-				}
-			});
+		if (!this.findCurrentPlusOneView()) {
+			this.append(currentPlusOneSection, this.isRightToLeft(), this.getCurrentPlusOneFlippableState());
+		}
+		if (currentPagePlusTwoSection && !this.findCurrentPlusTwoView()) {
+			this.append(currentPagePlusTwoSection, true, this.getCurrentPlusTwoFlippableState());
+		}
 	}
 
 	renderPreviousUnderPages() {
 		const firstView = this.views.first();
 		const currentPageMinusOneSection = firstView && firstView.section.prev();
 		if (!currentPageMinusOneSection) {
-			return Promise.resolve();
+			return;
 		}
 
 		const currentPageMinusTwoSection = currentPageMinusOneSection.prev();
 
-		return this.q.enqueue(() => {
-			if (!this.findCurrentMinusOneView()) {
-				return this.prepend(currentPageMinusOneSection, true, this.getCurrentMinusOneFlippableState());
-			}
-		})
-			.then(() => {
-				if (currentPageMinusTwoSection && !this.findCurrentMinusTwoView()) {
-					return this.q.enqueue(() => {
-						return this.prepend(currentPageMinusTwoSection, false, this.getCurrentMinusTwoFlippableState());
-					});
-				}
-			});
+		if (!this.findCurrentMinusOneView()) {
+			this.prepend(currentPageMinusOneSection, true, this.getCurrentMinusOneFlippableState());
+		}
+		if (currentPageMinusTwoSection && !this.findCurrentMinusTwoView()) {
+			this.prepend(currentPageMinusTwoSection, false, this.getCurrentMinusTwoFlippableState());
+		}
 	}
 
-	resize(width, height, epubcfi) {
-		super.resize(width, height, epubcfi);
-
-		this.generateDynamicCSS();
+	getFirstVisibleView() {
+		return this.findReadableLeftPage() || this.findRightVisibleView();
 	}
 
 	getPageSize() {
 		/*
             The actual book page might be smaller
          */
-		const firstView = this.views.first();
+		const firstView = this.getFirstVisibleView();
 		const bodyElement = firstView.getBodyElement();
 		const bodyRectangle = bodyElement.getBoundingClientRect();
 		const diffBetweenIframeWidthAndBodyWidth = firstView.getDiffBetweenIframeAndBodyWidth();
