@@ -10,7 +10,7 @@ class FlipperManager extends DefaultViewManager {
 		super(options);
 
 		this.name = "flipper";
-		this.animationDurationMs = 800;
+		this.animationDurationMs = 1000;
 		this.assumedFPS = 60;
 		this.numberOfFrames = this.animationDurationMs / 1000 * this.assumedFPS;
 
@@ -1012,7 +1012,7 @@ class FlipperManager extends DefaultViewManager {
 
 			const flippableFromRightOnRightSideViewElement = flippableFRomRightOnRightSideView.element;
 			flippableFromRightOnRightSideViewElement.style.clipPath = flippingAnimationStyles.flippableFromRightOnRightSideViewElement.clipPath;
-			flippableFromRightOnRightSideViewElement.style.left = `${pageWidth}px`;
+			flippableFromRightOnRightSideViewElement.style.left = `${flippableFRomRightOnRightSideView.width()}px`;
 		}
 
 
