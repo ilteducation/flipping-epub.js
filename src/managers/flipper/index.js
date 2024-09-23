@@ -1,8 +1,22 @@
 import DefaultViewManager from "../default";
-import {defer, extend, isNumber} from "../../utils/core";
+import {defer, extend, isNumber, requestAnimationFrame} from "../../utils/core";
 import {EVENTS} from "../../utils/constants";
 import VIEW_FLIPPING_STATE from "../views/viewflippingstate";
+import bezier from 'bezier-easing';
 
+/*
+  Get the Y of the bezier curve at a given t
+ */
+const y1 = { x: 0.57, y: 0.14 };
+const y2 = { x: 0.71, y: 0.29 };
+
+const easingFunction = bezier(y1.x, y1.y, y2.x, y2.y);
+
+const setElementStyles = (element, styles) => {
+	for (let key in styles) {
+		element.style[key] = styles[key];
+	}
+};
 
 class FlipperManager extends DefaultViewManager {
 
@@ -10,7 +24,7 @@ class FlipperManager extends DefaultViewManager {
 		super(options);
 
 		this.name = "flipper";
-		this.animationDurationMs = 1000;
+		this.animationDurationMs = 2000;
 		this.assumedFPS = 60;
 		this.numberOfFrames = this.animationDurationMs / 1000 * this.assumedFPS;
 
@@ -139,7 +153,6 @@ class FlipperManager extends DefaultViewManager {
 			}.bind(this))
 			.then(() => {
 				this.renderUnderPages();
-				this.generateDynamicCSS();
 			});
 		// .then(function(){
 		// 	return this.hooks.display.trigger(view);
@@ -239,12 +252,13 @@ class FlipperManager extends DefaultViewManager {
 
 		return view.display(this.request);
 	}
-
+	
 	flipFromRightToLeft() {
 		this.isFlipping = true;
 
 		const rightVisibleView = this.findRightVisibleView();
 		const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView();
+		const flippableFromRightOnRightSideView = this.findFlippableFromRightOnRightSideView();
 
 		if (!rightVisibleView || !flippableFromRightOnLeftSideView) {
 			this.isFlipping = false;
@@ -253,8 +267,6 @@ class FlipperManager extends DefaultViewManager {
 
 		rightVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
 		flippableFromRightOnLeftSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT);
-
-		const flippableFromRightOnRightSideView = this.findFlippableFromRightOnRightSideView();
 		if (flippableFromRightOnRightSideView) {
 			flippableFromRightOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT);
 		}
@@ -263,50 +275,144 @@ class FlipperManager extends DefaultViewManager {
 		const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
 		const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
 
-		outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingLeftClass);
-		outsideShadowElement.classList.add(this.outsideShadowFlippingLeftClass);
-		bendingShadowElement.classList.add(this.bendingShadowFlippingLeftClass);
+		let animationStartTimestamp = null;
 
-		// Changing stuff after the animation
-		setTimeout(() => {
-			const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
-			if (flippableFromLeftOnLeftSide) {
-				this.views.remove(flippableFromLeftOnLeftSide);
+		const animationCallback = (timestamp) => {
+			if(!animationStartTimestamp) {
+				animationStartTimestamp = timestamp;
 			}
 
-			const flippableFromLeftOnRightSide = this.findFlippableFromLeftOnRightSideView();
-			if (flippableFromLeftOnRightSide) {
-				this.views.remove(flippableFromLeftOnRightSide);
+			// We don't want the animation to go past the duration, because the styles get messed up after 100%
+			const elapsed = Math.min(timestamp - animationStartTimestamp, this.animationDurationMs);
+
+			console.log("elapsed", elapsed);
+
+			const progression = easingFunction(elapsed / this.animationDurationMs);
+
+
+			const animationStyles = this.getFlippingAnimationStyles(progression);
+
+			setElementStyles(rightVisibleView.element, animationStyles.rightViewElement);
+			setElementStyles(flippableFromRightOnLeftSideView.element, animationStyles.flippableFromRightOnLeftSideViewElement);
+
+			if(flippableFromRightOnRightSideView) {
+				setElementStyles(flippableFromRightOnRightSideView.element, animationStyles.flippableFromRightOnRightSideViewElement);
 			}
 
-			const readableLeftPage = this.findReadableLeftPage();
-			if (readableLeftPage) {
-				readableLeftPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
+			if(elapsed < this.animationDurationMs) {
+				requestAnimationFrame(animationCallback);
+			} else {
+				const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
+				if (flippableFromLeftOnLeftSide) {
+					this.views.remove(flippableFromLeftOnLeftSide);
+				}
+
+				const flippableFromLeftOnRightSide = this.findFlippableFromLeftOnRightSideView();
+				if (flippableFromLeftOnRightSide) {
+					this.views.remove(flippableFromLeftOnRightSide);
+				}
+
+				const readableLeftPage = this.findReadableLeftPage();
+				if (readableLeftPage) {
+					readableLeftPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
+				}
+
+				const readableRightPageFlipping = this.findRightVisibleViewFlippingLeft();
+				if (readableRightPageFlipping) {
+					readableRightPageFlipping.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
+				}
+
+				const flippingPageOnLeftSide = this.findFlippingFromRightOnLeftSideView();
+				if (flippingPageOnLeftSide) {
+					flippingPageOnLeftSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
+				}
+
+				const flippingPageOnRightSide = this.findFlippingFromRightOnRightSideView();
+				if (flippingPageOnRightSide) {
+					flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
+				}
+
+				outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingLeftClass);
+				outsideShadowElement.classList.remove(this.outsideShadowFlippingLeftClass);
+				bendingShadowElement.classList.remove(this.bendingShadowFlippingLeftClass);
+
+				this.isFlipping = false;
 			}
 
-			const readableRightPageFlipping = this.findRightVisibleViewFlippingLeft();
-			if (readableRightPageFlipping) {
-				readableRightPageFlipping.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
-			}
+		};
 
-			const flippingPageOnLeftSide = this.findFlippingFromRightOnLeftSideView();
-			if (flippingPageOnLeftSide) {
-				flippingPageOnLeftSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
-			}
+		requestAnimationFrame(animationCallback);
 
-			const flippingPageOnRightSide = this.findFlippingFromRightOnRightSideView();
-			if (flippingPageOnRightSide) {
-				flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
-			}
-
-			outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingLeftClass);
-			outsideShadowElement.classList.remove(this.outsideShadowFlippingLeftClass);
-			bendingShadowElement.classList.remove(this.bendingShadowFlippingLeftClass);
-
-			this.isFlipping = false;
-
-		}, this.animationDurationMs);
 	}
+	//
+	//
+	// flipFromRightToLeft() {
+	// 	this.isFlipping = true;
+	//
+	// 	const rightVisibleView = this.findRightVisibleView();
+	// 	const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView();
+	//
+	// 	if (!rightVisibleView || !flippableFromRightOnLeftSideView) {
+	// 		this.isFlipping = false;
+	// 		return;
+	// 	}
+	//
+	// 	rightVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
+	// 	flippableFromRightOnLeftSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT);
+	//
+	// 	const flippableFromRightOnRightSideView = this.findFlippableFromRightOnRightSideView();
+	// 	if (flippableFromRightOnRightSideView) {
+	// 		flippableFromRightOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT);
+	// 	}
+	//
+	// 	const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
+	// 	const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
+	// 	const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
+	//
+	// 	outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingLeftClass);
+	// 	outsideShadowElement.classList.add(this.outsideShadowFlippingLeftClass);
+	// 	bendingShadowElement.classList.add(this.bendingShadowFlippingLeftClass);
+	//
+	// 	// Changing stuff after the animation
+	// 	setTimeout(() => {
+	// 		const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
+	// 		if (flippableFromLeftOnLeftSide) {
+	// 			this.views.remove(flippableFromLeftOnLeftSide);
+	// 		}
+	//
+	// 		const flippableFromLeftOnRightSide = this.findFlippableFromLeftOnRightSideView();
+	// 		if (flippableFromLeftOnRightSide) {
+	// 			this.views.remove(flippableFromLeftOnRightSide);
+	// 		}
+	//
+	// 		const readableLeftPage = this.findReadableLeftPage();
+	// 		if (readableLeftPage) {
+	// 			readableLeftPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
+	// 		}
+	//
+	// 		const readableRightPageFlipping = this.findRightVisibleViewFlippingLeft();
+	// 		if (readableRightPageFlipping) {
+	// 			readableRightPageFlipping.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
+	// 		}
+	//
+	// 		const flippingPageOnLeftSide = this.findFlippingFromRightOnLeftSideView();
+	// 		if (flippingPageOnLeftSide) {
+	// 			flippingPageOnLeftSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
+	// 		}
+	//
+	// 		const flippingPageOnRightSide = this.findFlippingFromRightOnRightSideView();
+	// 		if (flippingPageOnRightSide) {
+	// 			flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
+	// 		}
+	//
+	// 		outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingLeftClass);
+	// 		outsideShadowElement.classList.remove(this.outsideShadowFlippingLeftClass);
+	// 		bendingShadowElement.classList.remove(this.bendingShadowFlippingLeftClass);
+	//
+	// 		this.isFlipping = false;
+	//
+	// 	}, this.animationDurationMs);
+	// }
 
 	flipFromLeftToRight() {
 		this.isFlipping = true;
@@ -603,6 +709,9 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	getFlippingAnimationStyles(progression) {
+
+		console.log("calculating styles from progression", progression);
+
 		const pageSize = this.getPageSize();
 		const {width: pageWidth, height, diffBetweenIframeWidthAndBodyWidth} = pageSize;
 
@@ -635,7 +744,8 @@ class FlipperManager extends DefaultViewManager {
 			},
 			flippableFromLeftOnRightSideViewElement: {
 				transformOrigin: `${pageWidth - xOffset}px ${height}px`,
-				transform: `translate3d(${-1 * pageWidth  + diffBetweenIframeWidthAndBodyWidth + 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${-1 * angleRad}rad)`,
+				// Notice the 2px on Z-Axis . This replaces z-index because it does not cause a repaint
+				transform: `translate3d(${-1 * pageWidth  + diffBetweenIframeWidthAndBodyWidth + 2 * xOffset}px, 0, 2px) rotate3d(0, 0, 1, ${-1 * angleRad}rad)`,
 				clipPath: `polygon(${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, ${pageWidth}px ${height}px)`
 			},
 			leftViewElement: {
@@ -646,7 +756,8 @@ class FlipperManager extends DefaultViewManager {
 			},
 			flippableFromRightOnLeftSideViewElement: {
 				transformOrigin: `${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px`,
-				transform: `translate3d(${2 * pageWidth - 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${angleRad}rad)`,
+				// Notice the 2px on Z-Axis . This replaces z-index because it does not cause a repaint
+				transform: `translate3d(${2 * pageWidth - 2 * xOffset}px, 0, 2px) rotate3d(0, 0, 1, ${angleRad}rad)`,
 				clipPath: `polygon(${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px)`
 			},
 			flippableFromRightOnRightSideViewElement: {
