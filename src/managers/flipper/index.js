@@ -19,6 +19,12 @@ const outsideShadowWrapperZIndex = 3;
 const flyingPagesZIndex = 4;
 const glowingShadowZIndex = 5;
 
+const setElementStyles = (element, styles) => {
+	for (let key in styles) {
+		element.style[key] = styles[key];
+	}
+};
+
 class FlipperManager extends DefaultViewManager {
 
 	constructor(options) {
@@ -35,8 +41,7 @@ class FlipperManager extends DefaultViewManager {
 		this.outsideShadowElementId = "outside-shadow";
 		this.bendingShadowElementId = "bending-shadow";
 
-		this.outsideShadowWrapperFlippingLeftClass = "outside-shadow-wrapper-flipping-left";
-		this.outsideShadowWrapperFlippingRightClass = "outside-shadow-wrapper-flipping-right";
+		this.outsideShadowWrapperFlippingClass = "outside-shadow-wrapper-flipping";
 		this.outsideShadowFlippingLeftClass = "outside-shadow-flipping-left";
 		this.outsideShadowFlippingRightClass = "outside-shadow-flipping-right";
 		this.bendingShadowFlippingLeftClass = "bending-shadow-flipping-left";
@@ -256,17 +261,11 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	setVisibleViewStyles(view, styles) {
+		setElementStyles(view.element, styles);
 
-		const element = view.element;
-		
-		for (let key in styles) {
-			element.style[key] = styles[key];
-		}
-		
 		if(!view.isShown()) {
 			view.show();
 		}
-		
 	}
 
 	flipFromRightToLeft() {
@@ -292,6 +291,9 @@ class FlipperManager extends DefaultViewManager {
 		const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
 		const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
 
+		outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingClass);
+		outsideShadowElement.classList.add(this.outsideShadowFlippingLeftClass);
+
 		let animationStartTimestamp = null;
 
 		const animationCallback = (timestamp) => {
@@ -302,10 +304,7 @@ class FlipperManager extends DefaultViewManager {
 			// We don't want the animation to go past the duration, because the styles get messed up after 100%
 			const elapsed = Math.min(timestamp - animationStartTimestamp, this.animationDurationMs);
 
-			console.log("elapsed", elapsed);
-
 			const progression = easingFunction(elapsed / this.animationDurationMs);
-
 
 			const animationStyles = this.getFlippingAnimationStyles(progression);
 
@@ -316,9 +315,16 @@ class FlipperManager extends DefaultViewManager {
 				this.setVisibleViewStyles(flippableFromRightOnRightSideView, animationStyles.flippableFromRightOnRightSideViewElement);
 			}
 
-			if(elapsed < this.animationDurationMs) {
+			setElementStyles(outsideShadowElement, {
+				...animationStyles.flippableFromRightOnLeftSideViewElement,
+				...animationStyles.outsideShadowElement
+			});
+
+			setElementStyles(outsideShadowWrapperElement, animationStyles.outsideShadowWrapperElementFlippingLeft);
+
+			if(elapsed < this.animationDurationMs && elapsed < this.animationDurationMs * 0.8) {
 				requestAnimationFrame(animationCallback);
-			} else {
+			} else if (elapsed >= this.animationDurationMs) {
 				const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
 				if (flippableFromLeftOnLeftSide) {
 					this.views.remove(flippableFromLeftOnLeftSide);
@@ -349,7 +355,7 @@ class FlipperManager extends DefaultViewManager {
 					flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
 				}
 
-				outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingLeftClass);
+				outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingClass);
 				outsideShadowElement.classList.remove(this.outsideShadowFlippingLeftClass);
 				bendingShadowElement.classList.remove(this.bendingShadowFlippingLeftClass);
 
@@ -726,9 +732,6 @@ class FlipperManager extends DefaultViewManager {
 	}
 
 	getFlippingAnimationStyles(progression) {
-
-		console.log("calculating styles from progression", progression);
-
 		const pageSize = this.getPageSize();
 		const {width: pageWidth, height, diffBetweenIframeWidthAndBodyWidth} = pageSize;
 
@@ -798,13 +801,11 @@ class FlipperManager extends DefaultViewManager {
 				opacity: shadowIntensity,
 			},
 			outsideShadowWrapperElementFlippingLeft: {
-				zIndex: outsideShadowWrapperZIndex,
 				filter: `drop-shadow(${-1 * 20 * shadowWidthRatio}px ${
 					10 * shadowWidthRatio
 				}px 5px rgba(0, 0, 0, ${0.5 * shadowWidthRatio}))`,
 			},
 			outsideShadowWrapperElementFlippingRight: {
-				zIndex: outsideShadowWrapperZIndex,
 				filter: `drop-shadow(${20 * shadowWidthRatio}px ${
 					10 * shadowWidthRatio
 				}px 5px rgba(0, 0, 0, ${0.5 * shadowWidthRatio}))`,
@@ -1078,7 +1079,8 @@ class FlipperManager extends DefaultViewManager {
 		        .${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE},
 				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE},
 				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE},
-				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE}
+				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE},
+				#${this.outsideShadowWrapperId}
 				 {
 					z-index: ${hiddenPagesZIndex};
 				}
@@ -1098,6 +1100,17 @@ class FlipperManager extends DefaultViewManager {
 				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT},
 				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT} {
 				    z-index: ${flyingPagesZIndex};
+				}
+				
+				#${this.outsideShadowWrapperId}.${this.outsideShadowWrapperFlippingClass} {
+					z-index: ${outsideShadowWrapperZIndex};
+				}
+				
+				.${this.outsideShadowFlippingLeftClass},
+				.${this.outsideShadowFlippingRightClass} {
+					width: ${pageWidth}px;
+					height: ${height}px;
+					background-color: white;
 				}
 		`;
 
