@@ -31,7 +31,7 @@ class FlipperManager extends DefaultViewManager {
 		super(options);
 
 		this.name = "flipper";
-		this.animationDurationMs = 2000;
+		this.animationDurationMs = 800;
 		this.assumedFPS = 60;
 		this.numberOfFrames = this.animationDurationMs / 1000 * this.assumedFPS;
 
@@ -294,6 +294,9 @@ class FlipperManager extends DefaultViewManager {
 		outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingClass);
 		outsideShadowElement.classList.add(this.outsideShadowFlippingLeftClass);
 
+		bendingShadowElement.classList.add(this.bendingShadowFlippingLeftClass);
+
+
 		let animationStartTimestamp = null;
 
 		const animationCallback = (timestamp) => {
@@ -321,10 +324,20 @@ class FlipperManager extends DefaultViewManager {
 			});
 
 			setElementStyles(outsideShadowWrapperElement, animationStyles.outsideShadowWrapperElementFlippingLeft);
+			setElementStyles(bendingShadowElement, {
+				...animationStyles.flippableFromRightOnLeftSideViewElement,
+				...animationStyles.bendingShadowFLippingLeft
+			});
 
-			if(elapsed < this.animationDurationMs && elapsed < this.animationDurationMs * 0.8) {
+			// if(elapsed < this.animationDurationMs && elapsed < this.animationDurationMs * 0.8) {
+			// 	requestAnimationFrame(animationCallback);
+			// } else if (elapsed >= this.animationDurationMs) {
+
+			if(elapsed < this.animationDurationMs) {
 				requestAnimationFrame(animationCallback);
-			} else if (elapsed >= this.animationDurationMs) {
+			} else {
+
+
 				const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
 				if (flippableFromLeftOnLeftSide) {
 					this.views.remove(flippableFromLeftOnLeftSide);
@@ -769,32 +782,26 @@ class FlipperManager extends DefaultViewManager {
 		 */
 		return {
 			flippableFromLeftOnLeftSideFlippingRight: {
-				zIndex: visibleUnderPagesZIndex,
 				clipPath: `polygon(${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px 0, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px ${height}px)`
 			},
 			flippableFromLeftOnRightSideViewElement: {
-				zIndex: flyingPagesZIndex,
 				transformOrigin: `${pageWidth - xOffset}px ${height}px`,
 				transform: `translate3d(${-1 * pageWidth  + diffBetweenIframeWidthAndBodyWidth + 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${-1 * angleRad}rad)`,
 				clipPath: `polygon(${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, ${pageWidth}px ${height}px)`
 			},
 			leftViewElement: {
-				zIndex: visibleReadablePagesZIndex,
 				clipPath: `polygon(${diffBetweenIframeWidthAndBodyWidth}px 0, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px 0, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px)`,
 			},
 			rightViewElement: {
-				zIndex: visibleReadablePagesZIndex,
 				clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, 0 ${height}px)`,
 			},
 			flippableFromRightOnLeftSideViewElement: {
-				zIndex: flyingPagesZIndex,
 				transformOrigin: `${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px`,
 				// Notice the 2px on Z-Axis . This replaces z-index because it does not cause a repaint
 				transform: `translate3d(${2 * pageWidth - 2 * xOffset}px, 0, 2px) rotate3d(0, 0, 1, ${angleRad}rad)`,
 				clipPath: `polygon(${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px)`
 			},
 			flippableFromRightOnRightSideViewElement: {
-				zIndex: visibleUnderPagesZIndex,
 				clipPath: `polygon(${pageWidth - xOffset}px ${height}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px 0, ${pageWidth}px ${height}px, 0 ${height}px)`
 			},
 			outsideShadowElement: {
@@ -811,12 +818,10 @@ class FlipperManager extends DefaultViewManager {
 				}px 5px rgba(0, 0, 0, ${0.5 * shadowWidthRatio}))`,
 			},
 			bendingShadowFLippingLeft: {
-				zIndex: glowingShadowZIndex,
 				background: this.getBendingShadowBackground(progression, "LEFT", angleRad),
 				opacity: `${1 - progression}`
 			},
 			bendingShadowFlippingRight: {
-				zIndex: glowingShadowZIndex,
 				background: this.getBendingShadowBackground(progression, "RIGHT", angleRad),
 				opacity: `${1 - progression}`
 			}
@@ -1111,6 +1116,14 @@ class FlipperManager extends DefaultViewManager {
 					width: ${pageWidth}px;
 					height: ${height}px;
 					background-color: white;
+					opacity: 0;
+				}
+				
+				.${this.bendingShadowFlippingLeftClass},
+				.${this.bendingShadowFlippingRightClass} {
+					z-index: ${glowingShadowZIndex};
+					width: ${pageWidth}px;
+					height: ${height}px;
 				}
 		`;
 
