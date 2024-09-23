@@ -110,18 +110,7 @@ class FlippingIframeView extends IframeView {
 		this.viewFlippingState = newFlippingState;
 		this.element.classList.add(this.viewFlippingState);
 
-		if ([
-			VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT,
-			VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT,
-			VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT,
-			VIEW_FLIPPING_STATE.LEFT_PAGE_FLIPPING_TO_RIGHT,
-			VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT,
-			VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT,
-			VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT,
-			VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT,
-		].includes(newFlippingState)) {
-			this.show();
-		}
+		this.updateInlineStyle();
 
 		if ([
 			VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE,
@@ -135,7 +124,6 @@ class FlippingIframeView extends IframeView {
 			}
 		}
 
-		this.updateInlineStyle();
 	}
 
 	getBodyElement() {
@@ -190,6 +178,10 @@ class FlippingIframeView extends IframeView {
 		if (bodyElement) {
 			bodyElement.style.left = bodyLeftOffset + "px";
 		}
+	}
+
+	isShown() {
+		return this.element.style.visibility === "visible";
 	}
 
 }

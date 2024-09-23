@@ -2,7 +2,7 @@ import DefaultViewManager from "../default";
 import {defer, extend, isNumber, requestAnimationFrame} from "../../utils/core";
 import {EVENTS} from "../../utils/constants";
 import VIEW_FLIPPING_STATE from "../views/viewflippingstate";
-import bezier from 'bezier-easing';
+import bezier from "bezier-easing";
 
 /*
   Get the Y of the bezier curve at a given t
@@ -12,11 +12,12 @@ const y2 = { x: 0.71, y: 0.29 };
 
 const easingFunction = bezier(y1.x, y1.y, y2.x, y2.y);
 
-const setElementStyles = (element, styles) => {
-	for (let key in styles) {
-		element.style[key] = styles[key];
-	}
-};
+const hiddenPagesZIndex= 0;
+const visibleUnderPagesZIndex = 1;
+const visibleReadablePagesZIndex = 2;
+const outsideShadowWrapperZIndex = 3;
+const flyingPagesZIndex = 4;
+const glowingShadowZIndex = 5;
 
 class FlipperManager extends DefaultViewManager {
 
@@ -153,6 +154,7 @@ class FlipperManager extends DefaultViewManager {
 			}.bind(this))
 			.then(() => {
 				this.renderUnderPages();
+				this.generateDynamicCSS();
 			});
 		// .then(function(){
 		// 	return this.hooks.display.trigger(view);
@@ -252,7 +254,21 @@ class FlipperManager extends DefaultViewManager {
 
 		return view.display(this.request);
 	}
-	
+
+	setVisibleViewStyles(view, styles) {
+
+		const element = view.element;
+		
+		for (let key in styles) {
+			element.style[key] = styles[key];
+		}
+		
+		if(!view.isShown()) {
+			view.show();
+		}
+		
+	}
+
 	flipFromRightToLeft() {
 		this.isFlipping = true;
 
@@ -270,6 +286,7 @@ class FlipperManager extends DefaultViewManager {
 		if (flippableFromRightOnRightSideView) {
 			flippableFromRightOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT);
 		}
+
 
 		const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
 		const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
@@ -292,11 +309,11 @@ class FlipperManager extends DefaultViewManager {
 
 			const animationStyles = this.getFlippingAnimationStyles(progression);
 
-			setElementStyles(rightVisibleView.element, animationStyles.rightViewElement);
-			setElementStyles(flippableFromRightOnLeftSideView.element, animationStyles.flippableFromRightOnLeftSideViewElement);
+			this.setVisibleViewStyles(rightVisibleView, animationStyles.rightViewElement);
+			this.setVisibleViewStyles(flippableFromRightOnLeftSideView, animationStyles.flippableFromRightOnLeftSideViewElement);
 
 			if(flippableFromRightOnRightSideView) {
-				setElementStyles(flippableFromRightOnRightSideView.element, animationStyles.flippableFromRightOnRightSideViewElement);
+				this.setVisibleViewStyles(flippableFromRightOnRightSideView, animationStyles.flippableFromRightOnRightSideViewElement);
 			}
 
 			if(elapsed < this.animationDurationMs) {
@@ -738,49 +755,67 @@ class FlipperManager extends DefaultViewManager {
             	? (maxShadowWidthStep - progression) / maxShadowWidthStep
             	: (progression - maxShadowWidthStep) / (1 - maxShadowWidthStep));
 
+		/**
+		 * z coordinates:
+		 *
+		 * hidden pages: -1
+		 * visible under pages: 0
+		 * flipping shadow: 1,
+		 * Top flipping pages: 2,
+		 * glowing shadow: 3,
+		 */
 		return {
 			flippableFromLeftOnLeftSideFlippingRight: {
+				zIndex: visibleUnderPagesZIndex,
 				clipPath: `polygon(${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px 0, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px ${height}px)`
 			},
 			flippableFromLeftOnRightSideViewElement: {
+				zIndex: flyingPagesZIndex,
 				transformOrigin: `${pageWidth - xOffset}px ${height}px`,
-				// Notice the 2px on Z-Axis . This replaces z-index because it does not cause a repaint
-				transform: `translate3d(${-1 * pageWidth  + diffBetweenIframeWidthAndBodyWidth + 2 * xOffset}px, 0, 2px) rotate3d(0, 0, 1, ${-1 * angleRad}rad)`,
+				transform: `translate3d(${-1 * pageWidth  + diffBetweenIframeWidthAndBodyWidth + 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${-1 * angleRad}rad)`,
 				clipPath: `polygon(${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, ${pageWidth}px ${height}px)`
 			},
 			leftViewElement: {
+				zIndex: visibleReadablePagesZIndex,
 				clipPath: `polygon(${diffBetweenIframeWidthAndBodyWidth}px 0, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px 0, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px)`,
 			},
 			rightViewElement: {
+				zIndex: visibleReadablePagesZIndex,
 				clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, 0 ${height}px)`,
 			},
 			flippableFromRightOnLeftSideViewElement: {
+				zIndex: flyingPagesZIndex,
 				transformOrigin: `${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px`,
 				// Notice the 2px on Z-Axis . This replaces z-index because it does not cause a repaint
 				transform: `translate3d(${2 * pageWidth - 2 * xOffset}px, 0, 2px) rotate3d(0, 0, 1, ${angleRad}rad)`,
 				clipPath: `polygon(${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px)`
 			},
 			flippableFromRightOnRightSideViewElement: {
+				zIndex: visibleUnderPagesZIndex,
 				clipPath: `polygon(${pageWidth - xOffset}px ${height}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px 0, ${pageWidth}px ${height}px, 0 ${height}px)`
 			},
 			outsideShadowElement: {
 				opacity: shadowIntensity,
 			},
 			outsideShadowWrapperElementFlippingLeft: {
+				zIndex: outsideShadowWrapperZIndex,
 				filter: `drop-shadow(${-1 * 20 * shadowWidthRatio}px ${
 					10 * shadowWidthRatio
 				}px 5px rgba(0, 0, 0, ${0.5 * shadowWidthRatio}))`,
 			},
 			outsideShadowWrapperElementFlippingRight: {
+				zIndex: outsideShadowWrapperZIndex,
 				filter: `drop-shadow(${20 * shadowWidthRatio}px ${
 					10 * shadowWidthRatio
 				}px 5px rgba(0, 0, 0, ${0.5 * shadowWidthRatio}))`,
 			},
 			bendingShadowFLippingLeft: {
+				zIndex: glowingShadowZIndex,
 				background: this.getBendingShadowBackground(progression, "LEFT", angleRad),
 				opacity: `${1 - progression}`
 			},
 			bendingShadowFlippingRight: {
+				zIndex: glowingShadowZIndex,
 				background: this.getBendingShadowBackground(progression, "RIGHT", angleRad),
 				opacity: `${1 - progression}`
 			}
@@ -907,7 +942,8 @@ class FlipperManager extends DefaultViewManager {
 
 		const animationTimingFunction = `cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y})`;
 
-		const css = `
+		// I keep this only until I will figure out all the animations
+		const DEPRECATEDCSS = `
 		
 			@keyframes flippable-from-left-on-left-side-flipping-right {
 				${flippableFromLeftOnLeftSideFlippingRightKeyframes}
@@ -1030,6 +1066,41 @@ class FlipperManager extends DefaultViewManager {
 			}
 			
 		`;
+
+		/**
+		 * All the pages are by default hidden, except for the visible ones
+		 *	We hide them by moving them to the back
+		 *
+		 * Animated pages will have z coordinated overwritten by the animation styles.
+		 */
+		const css = `
+		
+		        .${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE},
+				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE},
+				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE},
+				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE}
+				 {
+					z-index: ${hiddenPagesZIndex};
+				}
+				
+				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT},
+				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT} {
+				    z-index: ${visibleUnderPagesZIndex};
+				 }
+				
+				.${VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT},
+				.${VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT},
+				.${VIEW_FLIPPING_STATE.LEFT_PAGE_FLIPPING_TO_RIGHT},
+				.${VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT} {
+					z-index: ${visibleReadablePagesZIndex};
+				}
+				
+				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT},
+				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT} {
+				    z-index: ${flyingPagesZIndex};
+				}
+		`;
+
 
 		const styleElementId = "dynamic-flipper-css";
 		let styleElement = document.getElementById(styleElementId);
