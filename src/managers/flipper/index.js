@@ -368,6 +368,16 @@ class FlipperManager extends DefaultViewManager {
 					flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
 				}
 
+				// Resetting shadows - TODO - move them to a method or smth
+				outsideShadowWrapperElement.style.filter = "";
+				outsideShadowElement.style.transform = "";
+				outsideShadowElement.style.clipPath = "";
+				outsideShadowElement.style.opacity = "";
+
+
+
+
+
 				outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingClass);
 				outsideShadowElement.classList.remove(this.outsideShadowFlippingLeftClass);
 				bendingShadowElement.classList.remove(this.bendingShadowFlippingLeftClass);
