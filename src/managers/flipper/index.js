@@ -268,6 +268,21 @@ class FlipperManager extends DefaultViewManager {
 		}
 	}
 
+	/**
+	 * For some reason the shadow element creates a flicker if not completely reset to the initial state.
+	 *
+	 */
+	resetShadowStyles() {
+		const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
+		const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
+
+		outsideShadowWrapperElement.style.filter = "";
+		outsideShadowElement.style.transform = "";
+		outsideShadowElement.style.clipPath = "";
+		outsideShadowElement.style.opacity = "";
+
+	}
+
 	flipFromRightToLeft() {
 		this.isFlipping = true;
 
@@ -304,10 +319,10 @@ class FlipperManager extends DefaultViewManager {
 				animationStartTimestamp = timestamp;
 			}
 
-			// We don't want the animation to go past the duration, because the styles get messed up after 100%
-			const elapsed = Math.min(timestamp - animationStartTimestamp, this.animationDurationMs);
+			const elapsed = timestamp - animationStartTimestamp;
 
-			const progression = easingFunction(elapsed / this.animationDurationMs);
+			// We don't want the animation to go past the 100%, because the styles get messed up after 100%
+			const progression = Math.min(1, easingFunction(elapsed / this.animationDurationMs));
 
 			const animationStyles = this.getFlippingAnimationStyles(progression);
 
@@ -328,10 +343,6 @@ class FlipperManager extends DefaultViewManager {
 				...animationStyles.flippableFromRightOnLeftSideViewElement,
 				...animationStyles.bendingShadowFLippingLeft
 			});
-
-			// if(elapsed < this.animationDurationMs && elapsed < this.animationDurationMs * 0.8) {
-			// 	requestAnimationFrame(animationCallback);
-			// } else if (elapsed >= this.animationDurationMs) {
 
 			if(elapsed < this.animationDurationMs) {
 				requestAnimationFrame(animationCallback);
@@ -368,15 +379,7 @@ class FlipperManager extends DefaultViewManager {
 					flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
 				}
 
-				// Resetting shadows - TODO - move them to a method or smth
-				outsideShadowWrapperElement.style.filter = "";
-				outsideShadowElement.style.transform = "";
-				outsideShadowElement.style.clipPath = "";
-				outsideShadowElement.style.opacity = "";
-
-
-
-
+				this.resetShadowStyles();
 
 				outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingClass);
 				outsideShadowElement.classList.remove(this.outsideShadowFlippingLeftClass);
@@ -388,77 +391,7 @@ class FlipperManager extends DefaultViewManager {
 		};
 
 		requestAnimationFrame(animationCallback);
-
 	}
-	//
-	//
-	// flipFromRightToLeft() {
-	// 	this.isFlipping = true;
-	//
-	// 	const rightVisibleView = this.findRightVisibleView();
-	// 	const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView();
-	//
-	// 	if (!rightVisibleView || !flippableFromRightOnLeftSideView) {
-	// 		this.isFlipping = false;
-	// 		return;
-	// 	}
-	//
-	// 	rightVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
-	// 	flippableFromRightOnLeftSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT);
-	//
-	// 	const flippableFromRightOnRightSideView = this.findFlippableFromRightOnRightSideView();
-	// 	if (flippableFromRightOnRightSideView) {
-	// 		flippableFromRightOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT);
-	// 	}
-	//
-	// 	const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
-	// 	const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
-	// 	const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
-	//
-	// 	outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingLeftClass);
-	// 	outsideShadowElement.classList.add(this.outsideShadowFlippingLeftClass);
-	// 	bendingShadowElement.classList.add(this.bendingShadowFlippingLeftClass);
-	//
-	// 	// Changing stuff after the animation
-	// 	setTimeout(() => {
-	// 		const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
-	// 		if (flippableFromLeftOnLeftSide) {
-	// 			this.views.remove(flippableFromLeftOnLeftSide);
-	// 		}
-	//
-	// 		const flippableFromLeftOnRightSide = this.findFlippableFromLeftOnRightSideView();
-	// 		if (flippableFromLeftOnRightSide) {
-	// 			this.views.remove(flippableFromLeftOnRightSide);
-	// 		}
-	//
-	// 		const readableLeftPage = this.findReadableLeftPage();
-	// 		if (readableLeftPage) {
-	// 			readableLeftPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
-	// 		}
-	//
-	// 		const readableRightPageFlipping = this.findRightVisibleViewFlippingLeft();
-	// 		if (readableRightPageFlipping) {
-	// 			readableRightPageFlipping.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
-	// 		}
-	//
-	// 		const flippingPageOnLeftSide = this.findFlippingFromRightOnLeftSideView();
-	// 		if (flippingPageOnLeftSide) {
-	// 			flippingPageOnLeftSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
-	// 		}
-	//
-	// 		const flippingPageOnRightSide = this.findFlippingFromRightOnRightSideView();
-	// 		if (flippingPageOnRightSide) {
-	// 			flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
-	// 		}
-	//
-	// 		outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingLeftClass);
-	// 		outsideShadowElement.classList.remove(this.outsideShadowFlippingLeftClass);
-	// 		bendingShadowElement.classList.remove(this.bendingShadowFlippingLeftClass);
-	//
-	// 		this.isFlipping = false;
-	//
-	// 	}, this.animationDurationMs);
-	// }
 
 	flipFromLeftToRight() {
 		this.isFlipping = true;
