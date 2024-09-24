@@ -13,7 +13,7 @@ class FlippingIframeView extends IframeView {
 		this.setFlippingState(this.viewFlippingState);
 	}
 
-    /**
+	/**
      * If the page contents should be aligned left
      * @returns {boolean}
      */
@@ -26,15 +26,15 @@ class FlippingIframeView extends IframeView {
             || this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT;
 	}
 
-    /**
+	/**
      * If the page itself is displayed on the right side of the player
      */
-    isPositionedOnRightSide() {
-        return this.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT
+	isPositionedOnRightSide() {
+		return this.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT
             || this.viewFlippingState === VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT
             || this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE
             || this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT;
-    }
+	}
 
 	render(request, show) {
 

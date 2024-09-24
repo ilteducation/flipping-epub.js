@@ -106,7 +106,6 @@ class FlipperManager extends DefaultViewManager {
 
         // View is already shown, just move to correct location in view
         if (visible && section && this.layout.name !== "pre-paginated") {
-            // TODO -  FIXME this for reflowable books
             let offset = visible.offset();
 
             if (this.settings.direction === "ltr") {
@@ -188,7 +187,6 @@ class FlipperManager extends DefaultViewManager {
 
             Reverse for RTL
              */
-            // TODO - test and handle Right to left books
             if (this.views.all().some(view => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT)) {
                 viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT;
             }
@@ -502,75 +500,6 @@ class FlipperManager extends DefaultViewManager {
         requestAnimationFrame(animationCallback);
     }
 
-    // flipFromLeftToRight() {
-    // 	this.isFlipping = true;
-    //
-    // 	const leftVisibleView = this.findReadableLeftPage();
-    // 	const flippableFromLeftOnRightSideView = this.findFlippableFromLeftOnRightSideView();
-    //
-    // 	if (!leftVisibleView || !flippableFromLeftOnRightSideView) {
-    // 		this.isFlipping = false;
-    // 		return;
-    // 	}
-    //
-    // 	leftVisibleView.setFlippingState(VIEW_FLIPPING_STATE.LEFT_PAGE_FLIPPING_TO_RIGHT);
-    // 	flippableFromLeftOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT);
-    //
-    // 	const flippableFromLeftOnLeftSideView = this.findFlippableFromLeftOnLeftSideView();
-    // 	if (flippableFromLeftOnLeftSideView) {
-    // 		flippableFromLeftOnLeftSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT);
-    // 	}
-    //
-    // 	const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
-    // 	const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
-    // 	const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
-    //
-    // 	outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingRightClass);
-    // 	outsideShadowElement.classList.add(this.outsideShadowFlippingRightClass);
-    // 	bendingShadowElement.classList.add(this.bendingShadowFlippingRightClass);
-    //
-    // 	// Changing stuff after the animation
-    // 	setTimeout(() => {
-    //
-    // 		const flippableFromRightOnRightSide = this.findFlippableFromRightOnRightSideView();
-    // 		if (flippableFromRightOnRightSide) {
-    // 			this.views.remove(flippableFromRightOnRightSide);
-    // 		}
-    //
-    // 		const flippableFromRightOnLeftSide = this.findFlippableFromRightOnLeftSideView();
-    // 		if (flippableFromRightOnLeftSide) {
-    // 			this.views.remove(flippableFromRightOnLeftSide);
-    // 		}
-    //
-    // 		const readableRightPage = this.findRightVisibleView();
-    // 		if (readableRightPage) {
-    // 			readableRightPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
-    // 		}
-    //
-    // 		const readableLeftPageFlipping = this.findLeftPageFlippingRight();
-    // 		if (readableLeftPageFlipping) {
-    // 			readableLeftPageFlipping.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE);
-    // 		}
-    //
-    // 		const flippingPageOnRightSide = this.findFlippingFromLeftOnRightSideView();
-    // 		if (flippingPageOnRightSide) {
-    // 			flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
-    // 		}
-    //
-    // 		const flippingPageOnLeftSide = this.findFlippingFromLeftOnLeftSideView();
-    // 		if (flippingPageOnLeftSide) {
-    // 			flippingPageOnLeftSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
-    // 		}
-    //
-    // 		outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingRightClass);
-    // 		outsideShadowElement.classList.remove(this.outsideShadowFlippingRightClass);
-    // 		bendingShadowElement.classList.remove(this.bendingShadowFlippingRightClass);
-    //
-    // 		this.isFlipping = false;
-    // 	}, this.animationDurationMs);
-    //
-    // }
-
     next() {
         if (!this.views.length) {
             return;
@@ -823,15 +752,6 @@ class FlipperManager extends DefaultViewManager {
                 ? (maxShadowWidthStep - progression) / maxShadowWidthStep
                 : (progression - maxShadowWidthStep) / (1 - maxShadowWidthStep));
 
-        /**
-         * z coordinates:
-         *
-         * hidden pages: -1
-         * visible under pages: 0
-         * flipping shadow: 1,
-         * Top flipping pages: 2,
-         * glowing shadow: 3,
-         */
         return {
             flippableFromLeftOnLeftSideFlippingRight: {
                 clipPath: `polygon(${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px 0, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px ${height}px)`
@@ -849,8 +769,7 @@ class FlipperManager extends DefaultViewManager {
             },
             flippableFromRightOnLeftSideViewElement: {
                 transformOrigin: `${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px`,
-                // Notice the 2px on Z-Axis . This replaces z-index because it does not cause a repaint
-                transform: `translate3d(${2 * pageWidth - 2 * xOffset}px, 0, 2px) rotate3d(0, 0, 1, ${angleRad}rad)`,
+                transform: `translate3d(${2 * pageWidth - 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${angleRad}rad)`,
                 clipPath: `polygon(${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px)`
             },
             flippableFromRightOnRightSideViewElement: {
@@ -881,256 +800,9 @@ class FlipperManager extends DefaultViewManager {
     }
 
     generateDynamicCSS() {
-        let flippableFromLeftOnLeftSideFlippingRightKeyframes = "";
-        let flippableFromLeftOnRightSideFlippingRightKeyframes = "";
-        let leftTopPageFlippingRightKeyFrames = "";
-        let rightTopPageFlippingLeftKeyFrames = "";
-        let flippableFromRightOnLeftSideFlippingLeftKeyFrames = "";
-        let flippableFromRightOnRightSideFlippingLeftKeyFrames = "";
-        let shadowWrapperFlippingLeftKeyframes = "";
-        let shadowWrapperFlippingRightKeyframes = "";
-        let shadowElementFlippingLeftKeyframes = "";
-        let shadowElementFlippingRightKeyframes = "";
-        let bendingShadowFlippingLeftKeyframes = "";
-        let bendingShadowFlippingRightKeyframes = "";
-
-
-        for (let frame = 0; frame <= this.numberOfFrames; frame++) {
-
-            const progression = frame / this.numberOfFrames;
-            // xOffset = how much we fold the page on the horizontal axis
-
-            const animationStyles = this.getFlippingAnimationStyles(progression);
-
-            flippableFromLeftOnLeftSideFlippingRightKeyframes += `
-				${progression * 100}% {
-					clip-path: ${animationStyles.flippableFromLeftOnLeftSideFlippingRight.clipPath};
-				}
-			`;
-
-            flippableFromLeftOnRightSideFlippingRightKeyframes += `
-                ${progression * 100}% {
-                    transform-origin: ${animationStyles.flippableFromLeftOnRightSideViewElement.transformOrigin};
-                    transform: ${animationStyles.flippableFromLeftOnRightSideViewElement.transform};
-                    clip-path: ${animationStyles.flippableFromLeftOnRightSideViewElement.clipPath};
-                }
-            `;
-
-            rightTopPageFlippingLeftKeyFrames += `
-			 ${progression * 100}% {
-				clip-path: ${animationStyles.rightViewElement.clipPath};
-				}
-			`;
-            leftTopPageFlippingRightKeyFrames += `
-			 ${progression * 100}% {
-			 				clip-path: ${animationStyles.leftViewElement.clipPath};
-			 }
-			 `;
-
-            flippableFromRightOnLeftSideFlippingLeftKeyFrames += `
-			 ${progression * 100}% {
-			 	transform-origin: ${animationStyles.flippableFromRightOnLeftSideViewElement.transformOrigin};
-			 	transform: ${animationStyles.flippableFromRightOnLeftSideViewElement.transform};
-			 	clip-path: ${animationStyles.flippableFromRightOnLeftSideViewElement.clipPath};
-			}
-			`;
-
-            flippableFromRightOnRightSideFlippingLeftKeyFrames += `
-			 ${progression * 100}% {
-			 	clip-path: ${animationStyles.flippableFromRightOnRightSideViewElement.clipPath};
-			 }
-			 `;
-
-            shadowElementFlippingLeftKeyframes += `
-			 ${progression * 100}% {
-			 	transform-origin: ${animationStyles.flippableFromRightOnLeftSideViewElement.transformOrigin};
-			 	transform: ${animationStyles.flippableFromRightOnLeftSideViewElement.transform};
-			 	clip-path: ${animationStyles.flippableFromRightOnLeftSideViewElement.clipPath};
-			 	opacity: ${animationStyles.outsideShadowElement.opacity};
-			 }
-			 `;
-
-            shadowElementFlippingRightKeyframes += `
-			 ${progression * 100}% {
-			 	transform-origin: ${animationStyles.flippableFromLeftOnRightSideViewElement.transformOrigin};
-			 	transform: ${animationStyles.flippableFromLeftOnRightSideViewElement.transform};
-			 	clip-path: ${animationStyles.flippableFromLeftOnRightSideViewElement.clipPath};
-			 	opacity: ${animationStyles.outsideShadowElement.opacity};
-			 }
-			`;
-
-            shadowWrapperFlippingLeftKeyframes += `
-			 ${progression * 100}% {
-			 	filter: ${animationStyles.outsideShadowWrapperElementFlippingLeft.filter};
-			 }`;
-
-            shadowWrapperFlippingRightKeyframes += `
-			 ${progression * 100}% {
-			 	filter: ${animationStyles.outsideShadowWrapperElementFlippingRight.filter};
-			 }`;
-
-            bendingShadowFlippingLeftKeyframes += `
-			 ${progression * 100}% {
-			 	transform-origin: ${animationStyles.flippableFromRightOnLeftSideViewElement.transformOrigin};
-			 	transform: ${animationStyles.flippableFromRightOnLeftSideViewElement.transform};
-			 	clip-path: ${animationStyles.flippableFromRightOnLeftSideViewElement.clipPath};
-			 	background: ${animationStyles.bendingShadowFLippingLeft.background};
-			 	opacity: ${animationStyles.bendingShadowFLippingLeft.opacity};
-			 }
-			`;
-
-            bendingShadowFlippingRightKeyframes += `
-			 ${progression * 100}% {
-			 	transform-origin: ${animationStyles.flippableFromLeftOnRightSideViewElement.transformOrigin};
-			 	transform: ${animationStyles.flippableFromLeftOnRightSideViewElement.transform};
-			 	clip-path: ${animationStyles.flippableFromLeftOnRightSideViewElement.clipPath};
-			 	background: ${animationStyles.bendingShadowFlippingRight.background};
-			 	opacity: ${animationStyles.bendingShadowFlippingRight.opacity};
-			 }
-			 `;
-        }
-
-        /**
-         * Bezier points for animation timing function
-         */
-        const p1 = {x: 0.57, y: 0.14};
-        const p2 = {x: 0.71, y: 0.29};
         const pageSize = this.getPageSize();
         const {width: pageWidth, height} = pageSize;
 
-        const animationTimingFunction = `cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y})`;
-
-        // I keep this only until I will figure out all the animations
-        const DEPRECATEDCSS = `
-		
-			@keyframes flippable-from-left-on-left-side-flipping-right {
-				${flippableFromLeftOnLeftSideFlippingRightKeyframes}
-			}
-		
-			.flippableFromLeftOnLeftSideFlippingRight {
-				animation: flippable-from-left-on-left-side-flipping-right ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: ${animationTimingFunction};
-			}
-        
-            @keyframes flippable-from-left-on-right-side-flipping-right {
-                ${flippableFromLeftOnRightSideFlippingRightKeyframes}
-            }
-        
-            .flippableFromLeftOnRightSideFlippingRight {
-                z-index: 2;
-                animation: flippable-from-left-on-right-side-flipping-right ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: ${animationTimingFunction};
-            }
-        
-            @keyframes left-top-page-flipping-right {
-				${leftTopPageFlippingRightKeyFrames}
-			}
-			
-			.leftPageFlippingToRight{
-				animation: left-top-page-flipping-right ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: ${animationTimingFunction};
-			}
-			
-			@keyframes right-top-page-flipping-left {
-				${rightTopPageFlippingLeftKeyFrames}
-			}
-			.rightPageFlippingToLeft {
-				animation: right-top-page-flipping-left ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: ${animationTimingFunction};
-			}
-			
-			@keyframes flippable-from-right-on-left-side-flipping-left {
-				${flippableFromRightOnLeftSideFlippingLeftKeyFrames}
-			}
-			.flippableFromRightOnLeftSideFlippingLeft {
-				z-index: 2;
-				animation: flippable-from-right-on-left-side-flipping-left ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: ${animationTimingFunction};
-			}
-			
-			@keyframes flippable-from-right-on-right-side-flipping-left {
-				${flippableFromRightOnRightSideFlippingLeftKeyFrames}
-			}
-			
-			.flippableFromRightOnRightSideFlippingLeft {
-		        animation: flippable-from-right-on-right-side-flipping-left ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: ${animationTimingFunction};
-			}
-			
-			@keyframes outside-shadow-flipping-left-animation {
-				${shadowElementFlippingLeftKeyframes}
-			}
-				
-			.${this.outsideShadowFlippingLeftClass} {
-				animation: outside-shadow-flipping-left-animation ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: ${animationTimingFunction};
-				width: ${pageWidth}px;
-				height: ${height}px;
-				background-color: white;
-			}
-			
-			@keyframes outside-shadow-flipping-right-animation {
-				${shadowElementFlippingRightKeyframes}
-			}
-				
-			.${this.outsideShadowFlippingRightClass} {
-				animation: outside-shadow-flipping-right-animation ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: ${animationTimingFunction};
-				width: ${pageWidth}px;
-				height: ${height}px;
-				background-color: white;
-			}
-			
-			@keyframes outside-shadow-wrapper-flipping-left-animation {
-				${shadowWrapperFlippingLeftKeyframes}
-			}
-			
-			.${this.outsideShadowWrapperFlippingLeftClass} {
-				z-index: 1;
-				animation: outside-shadow-wrapper-flipping-left-animation ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: ${animationTimingFunction};
-			}
-			
-			@keyframes outside-shadow-wrapper-flipping-right-animation {
-				${shadowWrapperFlippingRightKeyframes}
-			}
-			
-			.${this.outsideShadowWrapperFlippingRightClass} {
-				z-index: 1;
-				animation: outside-shadow-wrapper-flipping-right-animation ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: ${animationTimingFunction};
-			}
-			
-			@keyframes bending-shadow-flipping-left-animation {
-				${bendingShadowFlippingLeftKeyframes}
-			}
-			.${this.bendingShadowFlippingLeftClass} {
-				z-index: 3;
-				width: ${pageWidth}px;
-				height: ${height}px;
-				animation: bending-shadow-flipping-left-animation ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: ${animationTimingFunction};	
-			}
-			
-			@keyframes bending-shadow-flipping-right-animation {
-				${bendingShadowFlippingRightKeyframes}
-			}
-			.${this.bendingShadowFlippingRightClass} {
-				z-index: 3;
-				width: ${pageWidth}px;
-				height: ${height}px;
-				animation: bending-shadow-flipping-right-animation ${this.animationDurationMs / 1000}s forwards;
-				animation-timing-function: ${animationTimingFunction};
-			}
-			
-		`;
-
-        /**
-         * All the pages are by default hidden, except for the visible ones
-         *    We hide them by moving them to the back
-         *
-         * Animated pages will have z coordinated overwritten by the animation styles.
-         */
         const css = `
 		
 		        .${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE},
