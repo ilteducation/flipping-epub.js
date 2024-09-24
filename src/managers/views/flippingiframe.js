@@ -165,7 +165,7 @@ class FlippingIframeView extends IframeView {
 		if (this.isPositionedOnRightSide()) {
 			leftOffset = this.width();
 		}
-		this.element.style.left = leftOffset + "px";
+		this.element.style.transform = `translate3d(${leftOffset}px, 0, 0)`;
 
 		/* When on the left side, the actual content page might be more narrow than the iframe,
         so we need to bring it to the "middle of the book".
