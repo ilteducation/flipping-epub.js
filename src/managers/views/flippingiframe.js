@@ -161,6 +161,9 @@ class FlippingIframeView extends IframeView {
 	updateInlineStyle() {
 		this.element.style.position = "absolute";
 
+		// To know that we are referring the coordinates to the top left corner. Also necessary for RTL books.
+		this.element.style.left = "0";
+
 		let leftOffset = 0;
 		if (this.isPositionedOnRightSide()) {
 			leftOffset = this.width();
