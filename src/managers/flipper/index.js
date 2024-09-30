@@ -26,44 +26,54 @@ const setElementStyles = (element, styles) => {
 };
 
 class FlipperManager extends DefaultViewManager {
-
     constructor(options) {
         super(options);
 
-        this.name = "flipper";
+        this.name = 'flipper';
         this.animationDurationMs = 800;
-        this.assumedFPS = 60;
-        this.numberOfFrames = this.animationDurationMs / 1000 * this.assumedFPS;
 
+        /**
+         * We want to allow only one animation at the time, otherwise they would interfere with each other.
+         * So the next page turn can only happen after the previous one has finished.
+         * @type {boolean}
+         */
         this.isFlipping = false;
 
-        this.outsideShadowWrapperId = "outside-shadow-wrapper";
-        this.outsideShadowElementId = "outside-shadow";
-        this.bendingShadowElementId = "bending-shadow";
+        this.outsideShadowWrapperId = 'outside-shadow-wrapper';
+        this.outsideShadowElementId = 'outside-shadow';
+        this.bendingShadowElementId = 'bending-shadow';
 
-        this.outsideShadowWrapperFlippingClass = "outside-shadow-wrapper-flipping";
-        this.outsideShadowFlippingLeftClass = "outside-shadow-flipping-left";
-        this.outsideShadowFlippingRightClass = "outside-shadow-flipping-right";
-        this.bendingShadowFlippingLeftClass = "bending-shadow-flipping-left";
-        this.bendingShadowFlippingRightClass = "bending-shadow-flipping-right";
+        this.outsideShadowWrapperFlippingClass = 'outside-shadow-wrapper-flipping';
+        this.outsideShadowFlippingLeftClass = 'outside-shadow-flipping-left';
+        this.outsideShadowFlippingRightClass = 'outside-shadow-flipping-right';
+        this.bendingShadowFlippingLeftClass = 'bending-shadow-flipping-left';
+        this.bendingShadowFlippingRightClass = 'bending-shadow-flipping-right';
     }
 
     isRightToLeft() {
-        return this.settings.direction === "rtl";
+        return this.settings.direction === 'rtl';
     }
 
+    /**
+     * The flipping display manager works only with FlippingIframeView, which requires a viewFlippingState
+     *
+     * @returns {View}
+     */
     createView(section, forceRight, viewFlippingState) {
-        return new this.View(section, extend(this.viewSettings, {forceRight, viewFlippingState}));
+        return new this.View(section, extend(this.viewSettings, { forceRight, viewFlippingState }));
     }
 
+    /**
+     * The outside shadow is the shadow that "borders" the page when it's flipped.
+     */
     createOutsideShadow() {
         // Why we need two elements for the drop shadow - https://css-tricks.com/using-box-shadows-and-clip-path-together/
-        const outsideShadowWrapper = document.createElement("div");
+        const outsideShadowWrapper = document.createElement('div');
         outsideShadowWrapper.id = this.outsideShadowWrapperId;
-        outsideShadowWrapper.style.position = "absolute";
-        outsideShadowWrapper.style.left = "0";
+        outsideShadowWrapper.style.position = 'absolute';
+        outsideShadowWrapper.style.left = '0';
 
-        const outsideShadow = document.createElement("div");
+        const outsideShadow = document.createElement('div');
         outsideShadow.id = this.outsideShadowElementId;
 
         outsideShadowWrapper.appendChild(outsideShadow);
@@ -71,11 +81,14 @@ class FlipperManager extends DefaultViewManager {
         this.container.appendChild(outsideShadowWrapper);
     }
 
+    /**
+     * The bending shadow is the shine effect on top of the flipping page.
+     */
     createBendingShadow() {
-        const bendingShadow = document.createElement("div");
+        const bendingShadow = document.createElement('div');
         bendingShadow.id = this.bendingShadowElementId;
-        bendingShadow.style.position = "absolute";
-        bendingShadow.style.left = "0";
+        bendingShadow.style.position = 'absolute';
+        bendingShadow.style.left = '0';
 
         this.container.appendChild(bendingShadow);
     }
@@ -91,9 +104,15 @@ class FlipperManager extends DefaultViewManager {
         this.createAnimationShadows();
     }
 
+    /**
+     * `display` is called at the initial rendering, and when we change location forcefully.
+     *  Basically when we call `rendition.display(target)`
+     *
+     *  And before `display`, the player is cleared so we can do here the initializations.
+     */
     display(section, target) {
-        var displaying = new defer();
-        var displayed = displaying.promise;
+        const displaying = new defer();
+        const displayed = displaying.promise;
 
         // Check if moving to target is needed
         if (target === section.href || isNumber(target)) {
@@ -101,23 +120,22 @@ class FlipperManager extends DefaultViewManager {
         }
 
         // Check to make sure the section we want isn't already shown
-        var visible = this.views.find(section);
-
+        const visible = this.views.find(section);
 
         // View is already shown, just move to correct location in view
-        if (visible && section && this.layout.name !== "pre-paginated") {
-            let offset = visible.offset();
+        if (visible && section && this.layout.name !== 'pre-paginated') {
+            const offset = visible.offset();
 
-            if (this.settings.direction === "ltr") {
+            if (this.settings.direction === 'ltr') {
                 this.scrollTo(offset.left, offset.top, true);
             } else {
-                let width = visible.width();
+                const width = visible.width();
                 this.scrollTo(offset.left + width, offset.top, true);
             }
 
             if (target) {
-                let offset = visible.locationOf(target);
-                let width = visible.width();
+                const offset = visible.locationOf(target);
+                const width = visible.width();
                 this.moveTo(offset, width);
             }
 
@@ -129,33 +147,34 @@ class FlipperManager extends DefaultViewManager {
         this.clear();
 
         let forceRight = false;
-        if ((this.layout.name === "pre-paginated" && this.layout.divisor === 2 && section.properties.includes("page-spread-right"))) {
+        if (
+            this.layout.name === 'pre-paginated' &&
+            this.layout.divisor === 2 &&
+            section.properties.includes('page-spread-right')
+        ) {
             forceRight = true;
         }
 
         this.add(section, forceRight)
-            .then(function (view) {
-
-                // Move to correct place within the section, if needed
-                if (target) {
-                    let offset = view.locationOf(target);
-                    let width = view.width();
-                    this.moveTo(offset, width);
-                }
-
-            }.bind(this), (err) => {
-                displaying.reject(err);
-            })
-            .then(function () {
-                return this.handleNextPrePaginated(forceRight, section, this.add);
-            }.bind(this))
-            .then(function () {
-
+            .then(
+                (view) => {
+                    // Move to correct place within the section, if needed
+                    if (target) {
+                        const offset = view.locationOf(target);
+                        const width = view.width();
+                        this.moveTo(offset, width);
+                    }
+                },
+                (err) => {
+                    displaying.reject(err);
+                },
+            )
+            .then(() => this.handleNextPrePaginated(forceRight, section, this.add))
+            .then(() => {
                 this.views.show();
 
                 displaying.resolve();
-
-            }.bind(this))
+            })
             .then(() => {
                 this.renderUnderPages();
                 this.generateDynamicCSS();
@@ -170,7 +189,9 @@ class FlipperManager extends DefaultViewManager {
     }
 
     add(section, forceRight) {
-        let viewFlippingState = this.isRightToLeft() ? VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT : VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT;
+        let viewFlippingState = this.isRightToLeft()
+            ? VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT
+            : VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT;
 
         /*
              The cover will always be on the right side. Or left, if RTL
@@ -187,18 +208,17 @@ class FlipperManager extends DefaultViewManager {
 
             Reverse for RTL
              */
-            if (this.views.all().some(view => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT)) {
+            if (this.views.all().some((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT)) {
                 viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT;
             }
             if (this.isRightToLeft()) {
-                if (this.views.all().some(view => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT)) {
+                if (this.views.all().some((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT)) {
                     viewFlippingState = VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT;
                 }
             }
-
         }
 
-        var view = this.createView(section, forceRight, viewFlippingState);
+        const view = this.createView(section, forceRight, viewFlippingState);
 
         this.views.append(view);
 
@@ -218,7 +238,7 @@ class FlipperManager extends DefaultViewManager {
     }
 
     append(section, forceRight, viewFlippingState) {
-        var view = this.createView(section, forceRight, viewFlippingState);
+        const view = this.createView(section, forceRight, viewFlippingState);
         this.views.append(view);
 
         view.onDisplayed = this.afterDisplayed.bind(this);
@@ -236,7 +256,7 @@ class FlipperManager extends DefaultViewManager {
     }
 
     prepend(section, forceRight, viewFlippingState) {
-        var view = this.createView(section, forceRight, viewFlippingState);
+        const view = this.createView(section, forceRight, viewFlippingState);
 
         view.on(EVENTS.VIEWS.RESIZED, (bounds) => {
             this.counter(bounds);
@@ -259,6 +279,9 @@ class FlipperManager extends DefaultViewManager {
     }
 
     setVisibleViewStyles(view, styles) {
+        if (!view.element) {
+            return;
+        }
         setElementStyles(view.element, styles);
 
         if (!view.isShown()) {
@@ -274,10 +297,10 @@ class FlipperManager extends DefaultViewManager {
         const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
         const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
 
-        outsideShadowWrapperElement.style.filter = "";
-        outsideShadowElement.style.transform = "";
-        outsideShadowElement.style.clipPath = "";
-        outsideShadowElement.style.opacity = "";
+        outsideShadowWrapperElement.style.filter = '';
+        outsideShadowElement.style.transform = '';
+        outsideShadowElement.style.clipPath = '';
+        outsideShadowElement.style.opacity = '';
     }
 
     getAnimationProgression(elapsedMs) {
@@ -293,14 +316,19 @@ class FlipperManager extends DefaultViewManager {
         const flippableFromRightOnRightSideView = this.findFlippableFromRightOnRightSideView();
 
         if (!rightVisibleView || !flippableFromRightOnLeftSideView) {
+            console.log("Next pages not found, can't flip");
             this.isFlipping = false;
-            return;
+            return false;
         }
 
         rightVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
-        flippableFromRightOnLeftSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT);
+        flippableFromRightOnLeftSideView.setFlippingState(
+            VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT,
+        );
         if (flippableFromRightOnRightSideView) {
-            flippableFromRightOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT);
+            flippableFromRightOnRightSideView.setFlippingState(
+                VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT,
+            );
         }
 
         const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
@@ -311,7 +339,6 @@ class FlipperManager extends DefaultViewManager {
         outsideShadowElement.classList.add(this.outsideShadowFlippingLeftClass);
 
         bendingShadowElement.classList.add(this.bendingShadowFlippingLeftClass);
-
 
         let animationStartTimestamp = null;
 
@@ -327,28 +354,32 @@ class FlipperManager extends DefaultViewManager {
             const animationStyles = this.getFlippingAnimationStyles(progression);
 
             this.setVisibleViewStyles(rightVisibleView, animationStyles.rightViewElement);
-            this.setVisibleViewStyles(flippableFromRightOnLeftSideView, animationStyles.flippableFromRightOnLeftSideViewElement);
+            this.setVisibleViewStyles(
+                flippableFromRightOnLeftSideView,
+                animationStyles.flippableFromRightOnLeftSideViewElement,
+            );
 
             if (flippableFromRightOnRightSideView) {
-                this.setVisibleViewStyles(flippableFromRightOnRightSideView, animationStyles.flippableFromRightOnRightSideViewElement);
+                this.setVisibleViewStyles(
+                    flippableFromRightOnRightSideView,
+                    animationStyles.flippableFromRightOnRightSideViewElement,
+                );
             }
 
             setElementStyles(outsideShadowElement, {
                 ...animationStyles.flippableFromRightOnLeftSideViewElement,
-                ...animationStyles.outsideShadowElement
+                ...animationStyles.outsideShadowElement,
             });
 
             setElementStyles(outsideShadowWrapperElement, animationStyles.outsideShadowWrapperElementFlippingLeft);
             setElementStyles(bendingShadowElement, {
                 ...animationStyles.flippableFromRightOnLeftSideViewElement,
-                ...animationStyles.bendingShadowFLippingLeft
+                ...animationStyles.bendingShadowFLippingLeft,
             });
 
             if (elapsed < this.animationDurationMs) {
                 requestAnimationFrame(animationCallback);
             } else {
-
-
                 const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
                 if (flippableFromLeftOnLeftSide) {
                     this.views.remove(flippableFromLeftOnLeftSide);
@@ -387,10 +418,11 @@ class FlipperManager extends DefaultViewManager {
 
                 this.isFlipping = false;
             }
-
         };
 
         requestAnimationFrame(animationCallback);
+
+        return true;
     }
 
     flipFromLeftToRight() {
@@ -401,14 +433,19 @@ class FlipperManager extends DefaultViewManager {
         const flippableFromLeftOnLeftSideView = this.findFlippableFromLeftOnLeftSideView();
 
         if (!leftVisibleView || !flippableFromLeftOnRightSideView) {
+            console.log("Previous pages not found, can't flip");
             this.isFlipping = false;
-            return;
+            return false;
         }
 
         leftVisibleView.setFlippingState(VIEW_FLIPPING_STATE.LEFT_PAGE_FLIPPING_TO_RIGHT);
-        flippableFromLeftOnRightSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT);
+        flippableFromLeftOnRightSideView.setFlippingState(
+            VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT,
+        );
         if (flippableFromLeftOnLeftSideView) {
-            flippableFromLeftOnLeftSideView.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT);
+            flippableFromLeftOnLeftSideView.setFlippingState(
+                VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT,
+            );
         }
 
         const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
@@ -434,27 +471,32 @@ class FlipperManager extends DefaultViewManager {
             const animationStyles = this.getFlippingAnimationStyles(progression);
 
             this.setVisibleViewStyles(leftVisibleView, animationStyles.leftViewElement);
-            this.setVisibleViewStyles(flippableFromLeftOnRightSideView, animationStyles.flippableFromLeftOnRightSideViewElement);
+            this.setVisibleViewStyles(
+                flippableFromLeftOnRightSideView,
+                animationStyles.flippableFromLeftOnRightSideViewElement,
+            );
 
             if (flippableFromLeftOnLeftSideView) {
-                this.setVisibleViewStyles(flippableFromLeftOnLeftSideView, animationStyles.flippableFromLeftOnLeftSideFlippingRight);
+                this.setVisibleViewStyles(
+                    flippableFromLeftOnLeftSideView,
+                    animationStyles.flippableFromLeftOnLeftSideFlippingRight,
+                );
             }
 
             setElementStyles(outsideShadowElement, {
                 ...animationStyles.flippableFromLeftOnRightSideViewElement,
-                ...animationStyles.outsideShadowElement
+                ...animationStyles.outsideShadowElement,
             });
 
             setElementStyles(outsideShadowWrapperElement, animationStyles.outsideShadowWrapperElementFlippingRight);
             setElementStyles(bendingShadowElement, {
                 ...animationStyles.flippableFromLeftOnRightSideViewElement,
-                ...animationStyles.bendingShadowFlippingRight
+                ...animationStyles.bendingShadowFlippingRight,
             });
 
             if (elapsed < this.animationDurationMs) {
                 requestAnimationFrame(animationCallback);
             } else {
-
                 const flippableFromRightOnRightSide = this.findFlippableFromRightOnRightSideView();
                 if (flippableFromRightOnRightSide) {
                     this.views.remove(flippableFromRightOnRightSide);
@@ -487,17 +529,17 @@ class FlipperManager extends DefaultViewManager {
 
                 this.resetShadowStyles();
 
-
                 outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingClass);
                 outsideShadowElement.classList.remove(this.outsideShadowFlippingRightClass);
                 bendingShadowElement.classList.remove(this.bendingShadowFlippingRightClass);
 
                 this.isFlipping = false;
             }
-
         };
 
         requestAnimationFrame(animationCallback);
+
+        return true;
     }
 
     next() {
@@ -505,18 +547,25 @@ class FlipperManager extends DefaultViewManager {
             return;
         }
         if (this.isFlipping) {
-            console.log("is already flipping");
+            console.log('is already flipping');
             return;
         }
 
+        let hasFlipped = false;
+
         if (this.isRightToLeft()) {
-            this.flipFromLeftToRight();
+            hasFlipped = this.flipFromLeftToRight();
         } else {
-            this.flipFromRightToLeft();
+            hasFlipped = this.flipFromRightToLeft();
         }
 
-        // Start rendering next under pages
-        this.renderNextUnderPages();
+        /**
+         * If the flip has not happened (maybe the next pages were not loaded yet), we don't want to render the under pages.
+         */
+        if (hasFlipped) {
+            // Start rendering next under pages
+            this.renderNextUnderPages();
+        }
     }
 
     prev() {
@@ -524,34 +573,41 @@ class FlipperManager extends DefaultViewManager {
             return;
         }
         if (this.isFlipping) {
-            console.log("is already flipping");
+            console.log('is already flipping');
             return;
         }
 
+        let hasFlipped = false;
+
         if (this.isRightToLeft()) {
-            this.flipFromRightToLeft();
+            hasFlipped = this.flipFromRightToLeft();
         } else {
-            this.flipFromLeftToRight();
+            hasFlipped = this.flipFromLeftToRight();
         }
 
-        // Start rendering prev under pages
-        this.renderPreviousUnderPages();
+        /**
+         * If the flip has not happened (maybe the next pages were not loaded yet), we don't want to render the under pages.
+         */
+        if (hasFlipped) {
+            // Start rendering prev under pages
+            this.renderPreviousUnderPages();
+        }
     }
 
     findReadableLeftPage() {
-        return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
+        return this.views.all().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
     }
 
     findLeftPageFlippingRight() {
-        return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.LEFT_PAGE_FLIPPING_TO_RIGHT);
+        return this.views.all().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.LEFT_PAGE_FLIPPING_TO_RIGHT);
     }
 
     findRightVisibleView() {
-        return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
+        return this.views.all().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
     }
 
     findRightVisibleViewFlippingLeft() {
-        return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
+        return this.views.all().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
     }
 
     getCurrentPlusOneFlippableState() {
@@ -563,9 +619,7 @@ class FlipperManager extends DefaultViewManager {
     }
 
     findCurrentPlusOneView() {
-        const displayedViews = this.views.displayed();
-        const plusOneView = displayedViews.find((view) => view.viewFlippingState === this.getCurrentPlusOneFlippableState());
-        return plusOneView;
+        return this.views.all().find((view) => view.viewFlippingState === this.getCurrentPlusOneFlippableState());
     }
 
     getCurrentPlusTwoFlippableState() {
@@ -577,31 +631,43 @@ class FlipperManager extends DefaultViewManager {
     }
 
     findCurrentPlusTwoView() {
-        return this.views.displayed().find((view) => view.viewFlippingState === this.getCurrentPlusTwoFlippableState());
+        return this.views.all().find((view) => view.viewFlippingState === this.getCurrentPlusTwoFlippableState());
     }
 
     findFlippableFromRightOnLeftSideView() {
-        return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE);
+        return this.views
+            .all()
+            .find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE);
     }
 
     findFlippableFromRightOnRightSideView() {
-        return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
+        return this.views
+            .all()
+            .find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
     }
 
     findFlippableFromLeftOnLeftSideView() {
-        return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
+        return this.views
+            .all()
+            .find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
     }
 
     findFlippableFromLeftOnRightSideView() {
-        return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
+        return this.views
+            .all()
+            .find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
     }
 
     findFlippingFromRightOnLeftSideView() {
-        return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT);
+        return this.views
+            .all()
+            .find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT);
     }
 
     findFlippingFromRightOnRightSideView() {
-        return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT);
+        return this.views
+            .all()
+            .find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT);
     }
 
     getCurrentMinusTwoFlippableState() {
@@ -613,7 +679,7 @@ class FlipperManager extends DefaultViewManager {
     }
 
     findCurrentMinusTwoView() {
-        return this.views.displayed().find((view) => view.viewFlippingState === this.getCurrentMinusTwoFlippableState());
+        return this.views.all().find((view) => view.viewFlippingState === this.getCurrentMinusTwoFlippableState());
     }
 
     getCurrentMinusOneFlippableState() {
@@ -625,15 +691,19 @@ class FlipperManager extends DefaultViewManager {
     }
 
     findCurrentMinusOneView() {
-        return this.views.displayed().find((view) => view.viewFlippingState === this.getCurrentMinusOneFlippableState());
+        return this.views.all().find((view) => view.viewFlippingState === this.getCurrentMinusOneFlippableState());
     }
 
     findFlippingFromLeftOnRightSideView() {
-        return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT);
+        return this.views
+            .all()
+            .find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT);
     }
 
     findFlippingFromLeftOnLeftSideView() {
-        return this.views.displayed().find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT);
+        return this.views
+            .all()
+            .find((view) => view.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT);
     }
 
     renderUnderPages() {
@@ -679,22 +749,38 @@ class FlipperManager extends DefaultViewManager {
     }
 
     getFirstVisibleView() {
-        return this.findReadableLeftPage() || this.findRightVisibleView();
+        // We want the first view that has content loaded. In this case, it means it has a HTML body element.
+        return (
+            this.views.all().find((view) => view.isShown()) || this.views.first()
+        );
     }
 
     getPageSize() {
         /*
-            The actual book page might be smaller
+            ⚠️ We assume that both pages are the same size.
+
+            The actual book page might be smaller. Because the proportions on the book do not always match with half of the player.
+
+            The animations are based on the actual book page size, not the player size.
          */
         const firstView = this.getFirstVisibleView();
         const bodyElement = firstView.getBodyElement();
+        if (!bodyElement) {
+            console.error('Body element not found');
+            return {
+                width: 0,
+                height: 0,
+                diffBetweenIframeWidthAndBodyWidth: 0,
+            };
+        }
+
         const bodyRectangle = bodyElement.getBoundingClientRect();
         const diffBetweenIframeWidthAndBodyWidth = firstView.getDiffBetweenIframeAndBodyWidth();
 
         return {
             width: bodyRectangle.width,
             height: bodyRectangle.height,
-            diffBetweenIframeWidthAndBodyWidth: diffBetweenIframeWidthAndBodyWidth
+            diffBetweenIframeWidthAndBodyWidth,
         };
     }
 
@@ -705,12 +791,10 @@ class FlipperManager extends DefaultViewManager {
      * @returns {string}
      */
     getBendingShadowBackground(progression, targetDirection, angleRad) {
-
-        const bendingShadowRotationRad =
-            targetDirection === "LEFT" ? (Math.PI - angleRad) / 2 : (Math.PI + angleRad) / 2;
+        const bendingShadowRotationRad = targetDirection === 'LEFT' ? (Math.PI - angleRad) / 2 : (Math.PI + angleRad) / 2;
 
         let shineLocation = Math.min(5 + progression * progression * 100, 100);
-        if (targetDirection === "RIGHT") {
+        if (targetDirection === 'RIGHT') {
             shineLocation = 100 - shineLocation;
         }
 
@@ -727,16 +811,19 @@ class FlipperManager extends DefaultViewManager {
 
     getFlippingAnimationStyles(progression) {
         const pageSize = this.getPageSize();
-        const {width: pageWidth, height, diffBetweenIframeWidthAndBodyWidth} = pageSize;
+        const { width: pageWidth, height, diffBetweenIframeWidthAndBodyWidth } = pageSize;
 
         const startingAngleRad = Math.PI / 6;
         const progressionBreakPoint = 0.15;
 
         const xOffset = progression * pageWidth;
-        const angleRad = progression <= progressionBreakPoint ? startingAngleRad : ((1 - progression) / (1 - progressionBreakPoint)) * startingAngleRad;
+        const angleRad =
+            progression <= progressionBreakPoint
+                ? startingAngleRad
+                : ((1 - progression) / (1 - progressionBreakPoint)) * startingAngleRad;
 
         // yOffset = how much is left after we fold the page on the vertical axis
-        const yOffset = height - (xOffset) * Math.tan((Math.PI - angleRad) / 2);
+        const yOffset = height - xOffset * Math.tan((Math.PI - angleRad) / 2);
 
         const maxShadowWidthStep = 0.5;
 
@@ -754,57 +841,79 @@ class FlipperManager extends DefaultViewManager {
 
         return {
             flippableFromLeftOnLeftSideFlippingRight: {
-                clipPath: `polygon(${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px 0, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px ${height}px)`
+                clipPath: `polygon(${
+                    xOffset + diffBetweenIframeWidthAndBodyWidth
+                }px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px 0, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${
+                    pageWidth + diffBetweenIframeWidthAndBodyWidth
+                }px ${height}px)`,
             },
+            /**
+             * We use transform: translate3d and rotate3d because 3d transformations do not cause "paint" steps in browser rendering pipelines,
+             * making the animations smoother.
+             */
             flippableFromLeftOnRightSideViewElement: {
                 transformOrigin: `${pageWidth - xOffset}px ${height}px`,
-                transform: `translate3d(${-1 * pageWidth + diffBetweenIframeWidthAndBodyWidth + 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${-1 * angleRad}rad)`,
-                clipPath: `polygon(${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, ${pageWidth}px ${height}px)`
+                transform: `translate3d(${
+                    -1 * pageWidth + diffBetweenIframeWidthAndBodyWidth + 2 * xOffset
+                }px, 0, 0) rotate3d(0, 0, 1, ${-1 * angleRad}rad)`,
+                clipPath: `polygon(${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px ${yOffset}px, ${
+                    pageWidth - xOffset
+                }px ${height}px, ${pageWidth}px ${height}px)`,
             },
             leftViewElement: {
-                clipPath: `polygon(${diffBetweenIframeWidthAndBodyWidth}px 0, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px 0, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px)`,
+                clipPath: `polygon(${diffBetweenIframeWidthAndBodyWidth}px 0, ${
+                    pageWidth + diffBetweenIframeWidthAndBodyWidth
+                }px 0, ${pageWidth + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${
+                    xOffset + diffBetweenIframeWidthAndBodyWidth
+                }px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px)`,
             },
             rightViewElement: {
-                clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${yOffset}px, ${pageWidth - xOffset}px ${height}px, 0 ${height}px)`,
+                clipPath: `polygon(0 0, ${pageWidth}px 0, ${pageWidth}px ${yOffset}px, ${
+                    pageWidth - xOffset
+                }px ${height}px, 0 ${height}px)`,
             },
             flippableFromRightOnLeftSideViewElement: {
                 transformOrigin: `${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px`,
                 transform: `translate3d(${2 * pageWidth - 2 * xOffset}px, 0, 0) rotate3d(0, 0, 1, ${angleRad}rad)`,
-                clipPath: `polygon(${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${xOffset + diffBetweenIframeWidthAndBodyWidth}px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px)`
+                clipPath: `polygon(${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${diffBetweenIframeWidthAndBodyWidth}px ${yOffset}px, ${
+                    xOffset + diffBetweenIframeWidthAndBodyWidth
+                }px ${height}px, ${diffBetweenIframeWidthAndBodyWidth}px ${height}px)`,
             },
             flippableFromRightOnRightSideViewElement: {
-                clipPath: `polygon(${pageWidth - xOffset}px ${height}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px 0, ${pageWidth}px ${height}px, 0 ${height}px)`
+                clipPath: `polygon(${
+                    pageWidth - xOffset
+                }px ${height}px, ${pageWidth}px ${yOffset}px, ${pageWidth}px 0, ${pageWidth}px ${height}px, 0 ${height}px)`,
             },
             outsideShadowElement: {
                 opacity: shadowIntensity,
             },
             outsideShadowWrapperElementFlippingLeft: {
-                filter: `drop-shadow(${-1 * 20 * shadowWidthRatio}px ${
-                    10 * shadowWidthRatio
-                }px 5px rgba(0, 0, 0, ${0.5 * shadowWidthRatio}))`,
+                filter: `drop-shadow(${-1 * 20 * shadowWidthRatio}px ${10 * shadowWidthRatio}px 5px rgba(0, 0, 0, ${
+                    0.5 * shadowWidthRatio
+                }))`,
             },
             outsideShadowWrapperElementFlippingRight: {
-                filter: `drop-shadow(${20 * shadowWidthRatio}px ${
-                    10 * shadowWidthRatio
-                }px 5px rgba(0, 0, 0, ${0.5 * shadowWidthRatio}))`,
+                filter: `drop-shadow(${20 * shadowWidthRatio}px ${10 * shadowWidthRatio}px 5px rgba(0, 0, 0, ${
+                    0.5 * shadowWidthRatio
+                }))`,
             },
             bendingShadowFLippingLeft: {
-                background: this.getBendingShadowBackground(progression, "LEFT", angleRad),
-                opacity: `${1 - progression}`
+                background: this.getBendingShadowBackground(progression, 'LEFT', angleRad),
+                opacity: `${1 - progression}`,
             },
             bendingShadowFlippingRight: {
-                background: this.getBendingShadowBackground(progression, "RIGHT", angleRad),
-                opacity: `${1 - progression}`
-            }
+                background: this.getBendingShadowBackground(progression, 'RIGHT', angleRad),
+                opacity: `${1 - progression}`,
+            },
         };
     }
 
     generateDynamicCSS() {
         const pageSize = this.getPageSize();
-        const {width: pageWidth, height} = pageSize;
+        const { width: pageWidth, height } = pageSize;
 
         const css = `
-		
+
 		        .${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE},
 				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE},
 				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE},
@@ -813,28 +922,28 @@ class FlipperManager extends DefaultViewManager {
 				 {
 					z-index: ${hiddenPagesZIndex};
 				}
-				
+
 				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT},
 				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT} {
 				    z-index: ${visibleUnderPagesZIndex};
 				 }
-				
+
 				.${VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT},
 				.${VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT},
 				.${VIEW_FLIPPING_STATE.LEFT_PAGE_FLIPPING_TO_RIGHT},
 				.${VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT} {
 					z-index: ${visibleReadablePagesZIndex};
 				}
-				
+
 				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT},
 				.${VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT} {
 				    z-index: ${flyingPagesZIndex};
 				}
-				
+
 				#${this.outsideShadowWrapperId}.${this.outsideShadowWrapperFlippingClass} {
 					z-index: ${outsideShadowWrapperZIndex};
 				}
-				
+
 				.${this.outsideShadowFlippingLeftClass},
 				.${this.outsideShadowFlippingRightClass} {
 					width: ${pageWidth}px;
@@ -842,7 +951,7 @@ class FlipperManager extends DefaultViewManager {
 					background-color: white;
 					opacity: 0;
 				}
-				
+
 				.${this.bendingShadowFlippingLeftClass},
 				.${this.bendingShadowFlippingRightClass} {
 					z-index: ${glowingShadowZIndex};
@@ -851,13 +960,12 @@ class FlipperManager extends DefaultViewManager {
 				}
 		`;
 
-
-        const styleElementId = "dynamic-flipper-css";
+        const styleElementId = 'dynamic-flipper-css';
         let styleElement = document.getElementById(styleElementId);
         const isElementAlreadyCreated = !!styleElement;
         if (!isElementAlreadyCreated) {
-            styleElement = document.createElement("style");
-            styleElement.id = "dynamic-flipper-css";
+            styleElement = document.createElement('style');
+            styleElement.id = styleElementId;
         }
         styleElement.innerHTML = css;
 
@@ -866,10 +974,8 @@ class FlipperManager extends DefaultViewManager {
         }
     }
 
-
     /**
-     * Used for calculating location.
-     * The manager checks for visible pages to determine location, so we consider visible only the static 2 pages.
+     * Used for calculating location - the manager checks for visible pages to determine location.
      *
      * If the player is currently flipping, we consider the next pages that will be shown - the flipping pages.
      * If the player is not flipping, we consider the "static" two pages.
@@ -887,7 +993,8 @@ class FlipperManager extends DefaultViewManager {
              * But since the player can NOT flip both left and right at the same time, it is ok
              * to consider all possible next flipping pages as visible.
              *
-             * The pages that WERE visible but now are flipping are not considered, because they will not visible anymore.
+             * The pages that WERE visible but now are flipping are not considered, because they will not visible anymore
+             * and they should not be counted when checking the current location..
              *
              */
             return [
@@ -900,56 +1007,9 @@ class FlipperManager extends DefaultViewManager {
 
         // Player static, not flipping
         return [VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT, VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT].includes(
-            view.viewFlippingState
+            view.viewFlippingState,
         );
     }
-
-    /*
-    TODO - remove this debug method
-     */
-    setPageFlipAnimationProgress(progression) {
-
-        console.log("setting progression styles", progression);
-
-        const flippingAnimationStyles = this.getFlippingAnimationStyles(progression);
-
-        const rightVisibleView = this.findRightVisibleView();
-        if (!rightVisibleView) {
-            return;
-        }
-
-        const rightVisibleViewElement = rightVisibleView.element;
-
-        rightVisibleViewElement.style.clipPath = flippingAnimationStyles.rightViewElement.clipPath;
-
-        const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView();
-        if (flippableFromRightOnLeftSideView) {
-
-            flippableFromRightOnLeftSideView.show();
-
-            const flippableFromRightOnLeftSideViewElement = flippableFromRightOnLeftSideView.element;
-            flippableFromRightOnLeftSideViewElement.style.transformOrigin = flippingAnimationStyles.flippableFromRightOnLeftSideViewElement.transformOrigin;
-            flippableFromRightOnLeftSideViewElement.style.transform = flippingAnimationStyles.flippableFromRightOnLeftSideViewElement.transform;
-            flippableFromRightOnLeftSideViewElement.style.clipPath = flippingAnimationStyles.flippableFromRightOnLeftSideViewElement.clipPath;
-
-        }
-
-        const pageSize = this.getPageSize();
-        const {width: pageWidth, height} = pageSize;
-
-
-        const flippableFRomRightOnRightSideView = this.findFlippableFromRightOnRightSideView();
-        if (flippableFRomRightOnRightSideView) {
-            flippableFRomRightOnRightSideView.show();
-
-            const flippableFromRightOnRightSideViewElement = flippableFRomRightOnRightSideView.element;
-            flippableFromRightOnRightSideViewElement.style.clipPath = flippingAnimationStyles.flippableFromRightOnRightSideViewElement.clipPath;
-            flippableFromRightOnRightSideViewElement.style.left = `${flippableFRomRightOnRightSideView.width()}px`;
-        }
-
-
-    }
-
 }
 
 export default FlipperManager;
