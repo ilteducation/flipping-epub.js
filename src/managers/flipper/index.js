@@ -3,6 +3,7 @@ import {defer, extend, isNumber, requestAnimationFrame} from "../../utils/core";
 import {EVENTS} from "../../utils/constants";
 import VIEW_FLIPPING_STATE from "../views/viewflippingstate";
 import bezier from "bezier-easing";
+import {PAGE_DRAGGING_EVENTS, PAGE_FLIPPING_EVENTS} from "../views/viewflippingevents";
 
 /*
   Get the Y of the bezier curve at a given t
@@ -39,6 +40,12 @@ class FlipperManager extends DefaultViewManager {
          */
         this.isFlipping = false;
 
+        /**
+         * How much we have dragged the page with the touch action.
+         * @type {number}
+         */
+        this.dragProgression = 0;
+
         this.outsideShadowWrapperId = 'outside-shadow-wrapper';
         this.outsideShadowElementId = 'outside-shadow';
         this.bendingShadowElementId = 'bending-shadow';
@@ -60,7 +67,272 @@ class FlipperManager extends DefaultViewManager {
      * @returns {View}
      */
     createView(section, forceRight, viewFlippingState) {
-        return new this.View(section, extend(this.viewSettings, { forceRight, viewFlippingState }));
+        const view = new this.View(section, extend(this.viewSettings, {forceRight, viewFlippingState}));
+
+        view.on(PAGE_FLIPPING_EVENTS.SWIPE_LEFT, () => {
+            this.emit(PAGE_FLIPPING_EVENTS.SWIPE_LEFT);
+        });
+
+        view.on(PAGE_DRAGGING_EVENTS.DRAG_START, (event) => {
+            this.draggingDirection = event.direction;
+
+            console.log("dragging started", this.draggingDirection);
+        });
+
+        view.on(PAGE_DRAGGING_EVENTS.DRAG_MOVE, (event) => {
+
+            const touchEvent = event.touches[0];
+            const clientX = touchEvent.clientX;
+
+            this.movePagesByDrag(clientX);
+        });
+
+        view.on(PAGE_DRAGGING_EVENTS.DRAG_END, () => {
+            /* Reset the page, take it back to the start.
+            ⚠️ Important! We assume that the swipe event is triggered before the drag end.
+            So during a natural swiping movement, we handle the swipe first, so the drag+swipe was already handled
+            when PAGE_DRAGGING_EVENTS.DRAG_END is triggered.
+            * */
+            if (!!this.draggingDirection) {
+                /* Swipe event should also reset drag direction. If it didn't, means that a natural swipe DID NOT happen.
+                 Reset the page
+                 */
+                this.resetDraggedPages();
+            }
+        });
+
+        return view;
+    }
+
+    getProgressionByDragX(clientX) {
+        const pageSize = this.getPageSize();
+        const pageWidth = pageSize.width;
+
+        const dragSize = this.draggingDirection === 'LEFT' ? Math.max(0, pageWidth - clientX)
+            : Math.max(0, clientX - pageWidth - pageSize.diffBetweenIframeWidthAndBodyWidth);
+
+        /**
+         * When the user drags a page, we want to feel like the page corner is "under the finger",
+         * and not ending exactly where the finger is.
+         * Since the page turn animation has a bigger angle at the beginning, we need to adjust the "finger size".
+         */
+        const progressionBeforeConsideringFingerSize = Math.max(0, Math.min(1, dragSize / pageWidth));
+        const maxFingerWidth = 50;
+        const fingerSize = maxFingerWidth * (1 - progressionBeforeConsideringFingerSize);
+
+        const howMuchDidPageMove = dragSize + fingerSize;
+        const xOffset = howMuchDidPageMove / 2;
+
+        return Math.max(0, Math.min(1, xOffset / pageWidth));
+    }
+
+    movePagesByDrag(clientX) {
+        if (!this.draggingDirection) {
+            return;
+        }
+        if (this.isFlipping) {
+            return;
+        }
+
+        const progression = this.getProgressionByDragX(clientX);
+
+        // Saving this for resetting or continuing the animation
+        this.dragProgression = progression;
+
+        // TODO - for flipping to right
+        this.setInstanceFlipToLeftStyles(progression);
+    }
+
+    resetDraggedPages() {
+        this.animateRightToLeftFlip('BACKWARDS');
+    }
+
+    setInstanceFlipToLeftStyles(progression) {
+        // TODO - fix all this duplication
+        const rightVisibleView = this.findRightVisibleView() || this.findRightVisibleViewFlippingLeft();
+        const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView() || this.findFlippingFromRightOnLeftSideView();
+        const flippableFromRightOnRightSideView = this.findFlippableFromRightOnRightSideView() || this.findFlippingFromRightOnRightSideView();
+
+
+        if (!rightVisibleView || !flippableFromRightOnLeftSideView) {
+            console.log("Next pages not found, can't flip");
+            return false;
+        }
+
+        rightVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
+        flippableFromRightOnLeftSideView.setFlippingState(
+            VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT,
+        );
+        if (flippableFromRightOnRightSideView) {
+            flippableFromRightOnRightSideView.setFlippingState(
+                VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT,
+            );
+        }
+
+        const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
+        const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
+        const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
+
+        outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingClass);
+        outsideShadowElement.classList.add(this.outsideShadowFlippingLeftClass);
+        bendingShadowElement.classList.add(this.bendingShadowFlippingLeftClass);
+
+        const animationStyles = this.getFlippingAnimationStyles(progression);
+
+        this.setVisibleViewStyles(rightVisibleView, animationStyles.rightViewElement);
+        this.setVisibleViewStyles(
+            flippableFromRightOnLeftSideView,
+            animationStyles.flippableFromRightOnLeftSideViewElement,
+        );
+
+        if (flippableFromRightOnRightSideView) {
+            this.setVisibleViewStyles(
+                flippableFromRightOnRightSideView,
+                animationStyles.flippableFromRightOnRightSideViewElement,
+            );
+        }
+
+        setElementStyles(outsideShadowElement, {
+            ...animationStyles.flippableFromRightOnLeftSideViewElement,
+            ...animationStyles.outsideShadowElement,
+        });
+
+        setElementStyles(outsideShadowWrapperElement, animationStyles.outsideShadowWrapperElementFlippingLeft);
+        setElementStyles(bendingShadowElement, {
+            ...animationStyles.flippableFromRightOnLeftSideViewElement,
+            ...animationStyles.bendingShadowFLippingLeft,
+        });
+    }
+
+
+    animateRightToLeftFlip(animationDirection) {
+        if (this.isFlipping) {
+            return;
+        }
+        this.isFlipping = true;
+
+        /*
+            If the animation direction is BACKWARDS, it means we want to reset the pages to the original state.
+            This means that we have already dragged the pages, so we need to search also for the pages that are flipping.
+         */
+        const rightVisibleView = this.findRightVisibleView() || (
+            animationDirection === 'BACKWARDS' ? this.findRightVisibleViewFlippingLeft() : null
+        );
+        const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView() || (
+            animationDirection === 'BACKWARDS' ? this.findFlippingFromRightOnLeftSideView() : null
+        );
+        const flippableFromRightOnRightSideView = this.findFlippableFromRightOnRightSideView() ||
+            (animationDirection === 'BACKWARDS' ? this.findFlippingFromRightOnRightSideView() : null);
+
+        if (!rightVisibleView || !flippableFromRightOnLeftSideView) {
+            console.log("Next pages not found, can't flip");
+            this.isFlipping = false;
+            return false;
+        }
+
+        rightVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
+        flippableFromRightOnLeftSideView.setFlippingState(
+            VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT,
+        );
+        if (flippableFromRightOnRightSideView) {
+            flippableFromRightOnRightSideView.setFlippingState(
+                VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT,
+            );
+        }
+
+        const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
+        const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
+        const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
+
+        outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingClass);
+        outsideShadowElement.classList.add(this.outsideShadowFlippingLeftClass);
+
+        bendingShadowElement.classList.add(this.bendingShadowFlippingLeftClass);
+
+        let animationStartTimestamp = null;
+        const animationDurationLeft = this.getAnimationDurationLeft(animationDirection);
+
+        const animationCallback = (timestamp) => {
+            if (!animationStartTimestamp) {
+                animationStartTimestamp = timestamp;
+            }
+
+            const elapsed = timestamp - animationStartTimestamp;
+
+            const progression = this.getAnimationProgression(elapsed, animationDirection);
+
+            const animationStyles = this.getFlippingAnimationStyles(progression);
+
+            this.setVisibleViewStyles(rightVisibleView, animationStyles.rightViewElement);
+            this.setVisibleViewStyles(
+                flippableFromRightOnLeftSideView,
+                animationStyles.flippableFromRightOnLeftSideViewElement,
+            );
+
+            if (flippableFromRightOnRightSideView) {
+                this.setVisibleViewStyles(
+                    flippableFromRightOnRightSideView,
+                    animationStyles.flippableFromRightOnRightSideViewElement,
+                );
+            }
+
+            setElementStyles(outsideShadowElement, {
+                ...animationStyles.flippableFromRightOnLeftSideViewElement,
+                ...animationStyles.outsideShadowElement,
+            });
+
+            setElementStyles(outsideShadowWrapperElement, animationStyles.outsideShadowWrapperElementFlippingLeft);
+            setElementStyles(bendingShadowElement, {
+                ...animationStyles.flippableFromRightOnLeftSideViewElement,
+                ...animationStyles.bendingShadowFLippingLeft,
+            });
+
+            if (elapsed < animationDurationLeft) {
+                requestAnimationFrame(animationCallback);
+            } else {
+                const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
+                if (flippableFromLeftOnLeftSide) {
+                    this.views.remove(flippableFromLeftOnLeftSide);
+                }
+
+                const flippableFromLeftOnRightSide = this.findFlippableFromLeftOnRightSideView();
+                if (flippableFromLeftOnRightSide) {
+                    this.views.remove(flippableFromLeftOnRightSide);
+                }
+
+                const readableLeftPage = this.findReadableLeftPage();
+                if (readableLeftPage) {
+                    readableLeftPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
+                }
+
+                const readableRightPageFlipping = this.findRightVisibleViewFlippingLeft();
+                if (readableRightPageFlipping) {
+                    readableRightPageFlipping.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
+                }
+
+                const flippingPageOnLeftSide = this.findFlippingFromRightOnLeftSideView();
+                if (flippingPageOnLeftSide) {
+                    flippingPageOnLeftSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
+                }
+
+                const flippingPageOnRightSide = this.findFlippingFromRightOnRightSideView();
+                if (flippingPageOnRightSide) {
+                    flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
+                }
+
+                this.resetShadowStyles();
+
+                outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingClass);
+                outsideShadowElement.classList.remove(this.outsideShadowFlippingLeftClass);
+                bendingShadowElement.classList.remove(this.bendingShadowFlippingLeftClass);
+
+                this.isFlipping = false;
+            }
+        };
+
+        requestAnimationFrame(animationCallback);
+
+        return true;
     }
 
     /**
@@ -303,126 +575,20 @@ class FlipperManager extends DefaultViewManager {
         outsideShadowElement.style.opacity = '';
     }
 
-    getAnimationProgression(elapsedMs) {
+    getAnimationProgression(elapsedMs, animationDirection) {
+        const animationDurationLeft = this.getAnimationDurationLeft(animationDirection);
+
+        const easedPartialProgression = easingFunction(elapsedMs / animationDurationLeft);
+
+        const progression = animationDirection === 'FORWARDS' ? this.dragProgression + easedPartialProgression
+                    : this.dragProgression - easedPartialProgression;
+
         // We don't want the animation to go past the 100%, because the styles get messed up after 100%
-        return Math.min(1, easingFunction(elapsedMs / this.animationDurationMs));
+        return Math.max(0, Math.min(1, progression));
     }
 
-    flipFromRightToLeft() {
-        this.isFlipping = true;
-
-        const rightVisibleView = this.findRightVisibleView();
-        const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView();
-        const flippableFromRightOnRightSideView = this.findFlippableFromRightOnRightSideView();
-
-        if (!rightVisibleView || !flippableFromRightOnLeftSideView) {
-            console.log("Next pages not found, can't flip");
-            this.isFlipping = false;
-            return false;
-        }
-
-        rightVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
-        flippableFromRightOnLeftSideView.setFlippingState(
-            VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT,
-        );
-        if (flippableFromRightOnRightSideView) {
-            flippableFromRightOnRightSideView.setFlippingState(
-                VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT,
-            );
-        }
-
-        const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
-        const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
-        const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
-
-        outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingClass);
-        outsideShadowElement.classList.add(this.outsideShadowFlippingLeftClass);
-
-        bendingShadowElement.classList.add(this.bendingShadowFlippingLeftClass);
-
-        let animationStartTimestamp = null;
-
-        const animationCallback = (timestamp) => {
-            if (!animationStartTimestamp) {
-                animationStartTimestamp = timestamp;
-            }
-
-            const elapsed = timestamp - animationStartTimestamp;
-
-            const progression = this.getAnimationProgression(elapsed);
-
-            const animationStyles = this.getFlippingAnimationStyles(progression);
-
-            this.setVisibleViewStyles(rightVisibleView, animationStyles.rightViewElement);
-            this.setVisibleViewStyles(
-                flippableFromRightOnLeftSideView,
-                animationStyles.flippableFromRightOnLeftSideViewElement,
-            );
-
-            if (flippableFromRightOnRightSideView) {
-                this.setVisibleViewStyles(
-                    flippableFromRightOnRightSideView,
-                    animationStyles.flippableFromRightOnRightSideViewElement,
-                );
-            }
-
-            setElementStyles(outsideShadowElement, {
-                ...animationStyles.flippableFromRightOnLeftSideViewElement,
-                ...animationStyles.outsideShadowElement,
-            });
-
-            setElementStyles(outsideShadowWrapperElement, animationStyles.outsideShadowWrapperElementFlippingLeft);
-            setElementStyles(bendingShadowElement, {
-                ...animationStyles.flippableFromRightOnLeftSideViewElement,
-                ...animationStyles.bendingShadowFLippingLeft,
-            });
-
-            if (elapsed < this.animationDurationMs) {
-                requestAnimationFrame(animationCallback);
-            } else {
-                const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
-                if (flippableFromLeftOnLeftSide) {
-                    this.views.remove(flippableFromLeftOnLeftSide);
-                }
-
-                const flippableFromLeftOnRightSide = this.findFlippableFromLeftOnRightSideView();
-                if (flippableFromLeftOnRightSide) {
-                    this.views.remove(flippableFromLeftOnRightSide);
-                }
-
-                const readableLeftPage = this.findReadableLeftPage();
-                if (readableLeftPage) {
-                    readableLeftPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
-                }
-
-                const readableRightPageFlipping = this.findRightVisibleViewFlippingLeft();
-                if (readableRightPageFlipping) {
-                    readableRightPageFlipping.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
-                }
-
-                const flippingPageOnLeftSide = this.findFlippingFromRightOnLeftSideView();
-                if (flippingPageOnLeftSide) {
-                    flippingPageOnLeftSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
-                }
-
-                const flippingPageOnRightSide = this.findFlippingFromRightOnRightSideView();
-                if (flippingPageOnRightSide) {
-                    flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
-                }
-
-                this.resetShadowStyles();
-
-                outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingClass);
-                outsideShadowElement.classList.remove(this.outsideShadowFlippingLeftClass);
-                bendingShadowElement.classList.remove(this.bendingShadowFlippingLeftClass);
-
-                this.isFlipping = false;
-            }
-        };
-
-        requestAnimationFrame(animationCallback);
-
-        return true;
+    getAnimationDurationLeft(animationDirection) {
+        return this.animationDurationMs * (animationDirection === 'FORWARDS' ? 1 - this.dragProgression : this.dragProgression);
     }
 
     flipFromLeftToRight() {
@@ -811,7 +977,7 @@ class FlipperManager extends DefaultViewManager {
 
     getFlippingAnimationStyles(progression) {
         const pageSize = this.getPageSize();
-        const { width: pageWidth, height, diffBetweenIframeWidthAndBodyWidth } = pageSize;
+        const {width: pageWidth, height, diffBetweenIframeWidthAndBodyWidth} = pageSize;
 
         const startingAngleRad = Math.PI / 6;
         const progressionBreakPoint = 0.15;
@@ -910,7 +1076,7 @@ class FlipperManager extends DefaultViewManager {
 
     generateDynamicCSS() {
         const pageSize = this.getPageSize();
-        const { width: pageWidth, height } = pageSize;
+        const {width: pageWidth, height} = pageSize;
 
         const css = `
 

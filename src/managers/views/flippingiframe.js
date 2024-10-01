@@ -1,7 +1,8 @@
 import IframeView from "./iframe";
 import {EVENTS} from "../../utils/constants";
 import VIEW_FLIPPING_STATE from "./viewflippingstate";
-
+import SwipeListener from 'swipe-listener';
+import {PAGE_DRAGGING_EVENTS, PAGE_FLIPPING_EVENTS} from "./viewflippingevents";
 
 class FlippingIframeView extends IframeView {
 
@@ -89,6 +90,8 @@ class FlippingIframeView extends IframeView {
 
 					this.updateInlineStyle();
 
+					this.addTouchHandlers();
+
 					resolve();
 				});
 
@@ -101,6 +104,45 @@ class FlippingIframeView extends IframeView {
 			.then(function () {
 				this.emit(EVENTS.VIEWS.RENDERED, this.section);
 			}.bind(this));
+	}
+
+	addTouchHandlers() {
+		if(!this.iframe || !this.iframe.contentDocument) {
+			return;
+		}
+
+		const contentDocument = this.iframe.contentDocument;
+
+		const swipeListener = new SwipeListener(contentDocument, {
+			preventScroll: true,
+		});
+		contentDocument.addEventListener('swipe', (event) => {
+
+			console.log("swipe", event.detail.directions, this.viewFlippingState);
+
+			if(event.detail.directions.left) {
+				this.emit(PAGE_FLIPPING_EVENTS.SWIPE_LEFT);
+			} else if(event.detail.directions.right) {
+				this.emit(PAGE_FLIPPING_EVENTS.SWIPE_RIGHT);
+			}
+		});
+
+		contentDocument.addEventListener('touchstart', (event) => {
+			const direction = this.isRightSidePage() ? 'LEFT': 'RIGHT';
+			this.emit(PAGE_DRAGGING_EVENTS.DRAG_START, {direction});
+		});
+
+		contentDocument.addEventListener('touchmove', (event) => {
+			this.emit(PAGE_DRAGGING_EVENTS.DRAG_MOVE, event);
+		});
+		contentDocument.addEventListener('touchend', (event) => {
+			this.emit(PAGE_DRAGGING_EVENTS.DRAG_END);
+		});
+		contentDocument.addEventListener('touchcancel', (event) => {
+			this.emit(PAGE_DRAGGING_EVENTS.DRAG_END);
+		});
+
+
 	}
 
 	setFlippingState(newFlippingState) {
