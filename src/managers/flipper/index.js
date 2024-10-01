@@ -75,12 +75,9 @@ class FlipperManager extends DefaultViewManager {
 
         view.on(PAGE_DRAGGING_EVENTS.DRAG_START, (event) => {
             this.draggingDirection = event.direction;
-
-            console.log("dragging started", this.draggingDirection);
         });
 
         view.on(PAGE_DRAGGING_EVENTS.DRAG_MOVE, (event) => {
-
             const touchEvent = event.touches[0];
             const clientX = touchEvent.clientX;
 
@@ -94,7 +91,7 @@ class FlipperManager extends DefaultViewManager {
             * */
             setTimeout(() => {
                 this.resetDraggedPages();
-            }, 200);
+            }, 100);
         });
 
         return view;
@@ -105,7 +102,7 @@ class FlipperManager extends DefaultViewManager {
         const pageWidth = pageSize.width;
 
         const dragSize = this.draggingDirection === 'LEFT' ? Math.max(0, pageWidth - clientX)
-            : Math.max(0, clientX - pageWidth - pageSize.diffBetweenIframeWidthAndBodyWidth);
+            : Math.max(0, clientX - pageSize.diffBetweenIframeWidthAndBodyWidth);
 
         /**
          * When the user drags a page, we want to feel like the page corner is "under the finger",
@@ -135,9 +132,8 @@ class FlipperManager extends DefaultViewManager {
         // Saving this for resetting or continuing the animation
         this.dragProgression = progression;
 
-        // TODO - for flipping to right
         const viewsToAnimate = this.getViewsToAnimate(this.draggingDirection);
-        this.setInstanceFlipToLeftStyles(viewsToAnimate, progression);
+        this.setFlippingViewsStyles(viewsToAnimate, progression, this.draggingDirection);
     }
 
     /**
@@ -167,23 +163,35 @@ class FlipperManager extends DefaultViewManager {
                 plusMinusTwo: this.findFlippableFromRightOnRightSideView() || this.findFlippingFromRightOnRightSideView(),
             };
         }
-
-        // TODO - for flipping to right
+        if(animationDirection === 'RIGHT') {
+            return {
+                previouslyVisibleView: this.findReadableLeftPage() || this.findLeftPageFlippingRight(),
+                plusMinusOne: this.findFlippableFromLeftOnRightSideView() || this.findFlippingFromLeftOnRightSideView(),
+                plusMinusTwo: this.findFlippableFromLeftOnLeftSideView() || this.findFlippingFromLeftOnLeftSideView(),
+            };
+        }
     }
 
-    setInstanceFlipToLeftStyles(viewsToAnimate, progression) {
+    /**
+     *
+     * @param viewsToAnimate - The views that will be affected by animation. We want to receive them pre-calculated because during the animation new views are created that might break the searching
+     * @param progression - The progression of the animation. 0 is the beginning, 1 is the end
+     * @param animationDirection - LEFT or RIGHT
+     */
+    setFlippingViewsStyles(viewsToAnimate, progression, animationDirection) {
         if (!viewsToAnimate.previouslyVisibleView || !viewsToAnimate.plusMinusOne) {
             console.log("Next pages not found, can't flip");
-            return false;
+            return;
         }
 
-        viewsToAnimate.previouslyVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
+        viewsToAnimate.previouslyVisibleView.setFlippingState(animationDirection === 'LEFT' ? VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT : VIEW_FLIPPING_STATE.LEFT_PAGE_FLIPPING_TO_RIGHT);
+
         viewsToAnimate.plusMinusOne.setFlippingState(
-            VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT,
+           animationDirection === 'LEFT' ?  VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT
         );
         if (viewsToAnimate.plusMinusTwo) {
             viewsToAnimate.plusMinusTwo.setFlippingState(
-                VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT,
+                animationDirection === 'LEFT' ? VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT: VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT
             );
         }
 
@@ -192,33 +200,37 @@ class FlipperManager extends DefaultViewManager {
         const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
 
         outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingClass);
-        outsideShadowElement.classList.add(this.outsideShadowFlippingLeftClass);
-        bendingShadowElement.classList.add(this.bendingShadowFlippingLeftClass);
+        outsideShadowElement.classList.add(animationDirection === 'LEFT' ? this.outsideShadowFlippingLeftClass: this.outsideShadowFlippingRightClass);
+        bendingShadowElement.classList.add(animationDirection === 'LEFT' ? this.bendingShadowFlippingLeftClass: this.bendingShadowFlippingRightClass);
 
         const animationStyles = this.getFlippingAnimationStyles(progression);
 
-        this.setVisibleViewStyles(viewsToAnimate.previouslyVisibleView, animationStyles.rightViewElement);
+        this.setVisibleViewStyles(viewsToAnimate.previouslyVisibleView, animationDirection ==='LEFT' ? animationStyles.rightViewElement : animationStyles.leftViewElement);
+
+        // The styles of the plusMinusOne element are reused for shadows because shadows need to be in the same position
+        const plusMinusOneElementStyles = animationDirection === 'LEFT' ? animationStyles.flippableFromRightOnLeftSideViewElement: animationStyles.flippableFromLeftOnRightSideViewElement;
+
         this.setVisibleViewStyles(
             viewsToAnimate.plusMinusOne,
-            animationStyles.flippableFromRightOnLeftSideViewElement,
+            plusMinusOneElementStyles,
         );
 
         if (viewsToAnimate.plusMinusTwo) {
             this.setVisibleViewStyles(
                 viewsToAnimate.plusMinusTwo,
-                animationStyles.flippableFromRightOnRightSideViewElement,
+                animationDirection === 'LEFT' ? animationStyles.flippableFromRightOnRightSideViewElement: animationStyles.flippableFromLeftOnLeftSideFlippingRight,
             );
         }
 
         setElementStyles(outsideShadowElement, {
-            ...animationStyles.flippableFromRightOnLeftSideViewElement,
+            ...plusMinusOneElementStyles,
             ...animationStyles.outsideShadowElement,
         });
 
         setElementStyles(outsideShadowWrapperElement, animationStyles.outsideShadowWrapperElementFlippingLeft);
         setElementStyles(bendingShadowElement, {
-            ...animationStyles.flippableFromRightOnLeftSideViewElement,
-            ...animationStyles.bendingShadowFLippingLeft,
+            ...plusMinusOneElementStyles,
+            ...(animationDirection === 'LEFT' ? animationStyles.bendingShadowFLippingLeft: animationStyles.bendingShadowFlippingRight),
         });
     }
 
@@ -233,15 +245,12 @@ class FlipperManager extends DefaultViewManager {
             return false;
         }
 
-        const viewsToAnimate = this.getViewsToAnimate('LEFT');
+        const viewsToAnimate = this.getViewsToAnimate(animationDirection);
 
         if (!viewsToAnimate.previouslyVisibleView || !viewsToAnimate.plusMinusOne) {
             console.log("Next pages not found, can't flip");
             return false;
         }
-
-        console.log("animating flip", animationDirection, progressionDirection);
-
 
         this.isFlipping = true;
 
@@ -257,7 +266,7 @@ class FlipperManager extends DefaultViewManager {
 
             const progression = this.getAnimationProgression(elapsed, progressionDirection);
 
-            this.setInstanceFlipToLeftStyles(viewsToAnimate, progression);
+            this.setFlippingViewsStyles(viewsToAnimate, progression, animationDirection);
 
             if (elapsed < animationDurationLeft) {
                 requestAnimationFrame(animationCallback);
@@ -287,7 +296,7 @@ class FlipperManager extends DefaultViewManager {
                     viewsToAnimate.plusMinusTwo.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
                 }
 
-                this.resetShadowStyles('LEFT');
+                this.resetShadowStyles(animationDirection);
 
                 // Resetting dragging state
                 this.dragProgression = 0;

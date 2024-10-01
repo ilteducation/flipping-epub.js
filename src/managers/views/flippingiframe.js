@@ -118,8 +118,6 @@ class FlippingIframeView extends IframeView {
 		});
 		contentDocument.addEventListener('swipe', (event) => {
 
-			console.log("swipe", event.detail.directions, this.viewFlippingState);
-
 			if(event.detail.directions.left) {
 				this.emit(PAGE_FLIPPING_EVENTS.SWIPE_LEFT);
 			} else if(event.detail.directions.right) {
@@ -218,10 +216,19 @@ class FlippingIframeView extends IframeView {
          for having control of how the pages are animated and positioned.
          */
 		const bodyLeftOffset = this.getBodyLeftOffset();
+
 		const bodyElement = this.getBodyElement();
 		if (bodyElement) {
 			bodyElement.style.left = bodyLeftOffset + "px";
+
+			// Disabling iframe scrolling
+			bodyElement.style.overflow = "hidden";
+			const htmlElement = bodyElement.parentElement;
+			htmlElement.style.overflow = "hidden";
+			htmlElement.style.overscrollBehavior = "none";
 		}
+
+
 	}
 
 	isShown() {
