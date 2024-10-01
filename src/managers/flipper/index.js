@@ -290,34 +290,30 @@ class FlipperManager extends DefaultViewManager {
             if (elapsed < animationDurationLeft) {
                 requestAnimationFrame(animationCallback);
             } else {
-                const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
-                if (flippableFromLeftOnLeftSide) {
-                    this.views.remove(flippableFromLeftOnLeftSide);
+
+                if(animationDirection === 'FORWARDS') {
+                    // We need to remove pages only if the animation was completed, not reset
+                    const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
+                    if (flippableFromLeftOnLeftSide) {
+                        this.views.remove(flippableFromLeftOnLeftSide);
+                    }
+
+                    const flippableFromLeftOnRightSide = this.findFlippableFromLeftOnRightSideView();
+                    if (flippableFromLeftOnRightSide) {
+                        this.views.remove(flippableFromLeftOnRightSide);
+                    }
+
+                    const readableLeftPage = this.findReadableLeftPage();
+                    if (readableLeftPage) {
+                        readableLeftPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
+                    }
                 }
 
-                const flippableFromLeftOnRightSide = this.findFlippableFromLeftOnRightSideView();
-                if (flippableFromLeftOnRightSide) {
-                    this.views.remove(flippableFromLeftOnRightSide);
-                }
 
-                const readableLeftPage = this.findReadableLeftPage();
-                if (readableLeftPage) {
-                    readableLeftPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
-                }
-
-                const readableRightPageFlipping = this.findRightVisibleViewFlippingLeft();
-                if (readableRightPageFlipping) {
-                    readableRightPageFlipping.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE);
-                }
-
-                const flippingPageOnLeftSide = this.findFlippingFromRightOnLeftSideView();
-                if (flippingPageOnLeftSide) {
-                    flippingPageOnLeftSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
-                }
-
-                const flippingPageOnRightSide = this.findFlippingFromRightOnRightSideView();
-                if (flippingPageOnRightSide) {
-                    flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
+                rightVisibleView.setFlippingState(animationDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE : VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
+                flippableFromRightOnLeftSideView.setFlippingState(animationDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE );
+                if(flippableFromRightOnRightSideView) {
+                    flippableFromRightOnRightSideView.setFlippingState(animationDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
                 }
 
                 this.resetShadowStyles();
