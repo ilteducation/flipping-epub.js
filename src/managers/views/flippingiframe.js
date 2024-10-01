@@ -125,7 +125,8 @@ class FlippingIframeView extends IframeView {
 			} else if(event.detail.directions.right) {
 				this.emit(PAGE_FLIPPING_EVENTS.SWIPE_RIGHT);
 			}
-		});
+		}, {passive: false}); // Safari bounce fix - https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#passive
+
 
 		contentDocument.addEventListener('touchstart', (event) => {
 			const direction = this.isRightSidePage() ? 'LEFT': 'RIGHT';
@@ -141,8 +142,6 @@ class FlippingIframeView extends IframeView {
 		contentDocument.addEventListener('touchcancel', (event) => {
 			this.emit(PAGE_DRAGGING_EVENTS.DRAG_END);
 		});
-
-
 	}
 
 	setFlippingState(newFlippingState) {

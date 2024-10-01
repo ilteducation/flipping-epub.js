@@ -88,17 +88,13 @@ class FlipperManager extends DefaultViewManager {
         });
 
         view.on(PAGE_DRAGGING_EVENTS.DRAG_END, () => {
-            /* Reset the page, take it back to the start.
-            ⚠️ Important! We assume that the swipe event is triggered before the drag end.
-            So during a natural swiping movement, we handle the swipe first, so the drag+swipe was already handled
-            when PAGE_DRAGGING_EVENTS.DRAG_END is triggered.
+            /*
+            ⚠️ Important! The DRAG_END event is triggered even when a natural swipe happens.
+            So we give it a bit of time until we reset the dragging direction
             * */
-            if (!!this.draggingDirection) {
-                /* Swipe event should also reset drag direction. If it didn't, means that a natural swipe DID NOT happen.
-                 Reset the page
-                 */
+            setTimeout(() => {
                 this.resetDraggedPages();
-            }
+            }, 200);
         });
 
         return view;
@@ -140,31 +136,53 @@ class FlipperManager extends DefaultViewManager {
         this.dragProgression = progression;
 
         // TODO - for flipping to right
-        this.setInstanceFlipToLeftStyles(progression);
+        const viewsToAnimate = this.getViewsToAnimate(this.draggingDirection);
+        this.setInstanceFlipToLeftStyles(viewsToAnimate, progression);
     }
 
+    /**
+     *
+     */
     resetDraggedPages() {
-        this.animateRightToLeftFlip('BACKWARDS');
+        if (!!this.draggingDirection) {
+            /* Swipe event should also reset drag direction. If it didn't, means that a natural swipe DID NOT happen.
+             Reset the page
+             */
+            this.animateFlip(this.draggingDirection, 'BACKWARDS');
+        }
     }
 
-    setInstanceFlipToLeftStyles(progression) {
-        // TODO - fix all this duplication
-        const rightVisibleView = this.findRightVisibleView() || this.findRightVisibleViewFlippingLeft();
-        const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView() || this.findFlippingFromRightOnLeftSideView();
-        const flippableFromRightOnRightSideView = this.findFlippableFromRightOnRightSideView() || this.findFlippingFromRightOnRightSideView();
+    /**
+     * Finds the views to animate
+     * @param animationDirection - LEFT or RIGHT
+     */
+    getViewsToAnimate(animationDirection) {
+        /*
+           If the progressionDirection is backwards or instant we need to search also for the pages that are flipping.
+        */
+        if(animationDirection === 'LEFT') {
+            return {
+                previouslyVisibleView: this.findRightVisibleView() || this.findRightVisibleViewFlippingLeft(),
+                plusMinusOne: this.findFlippableFromRightOnLeftSideView() || this.findFlippingFromRightOnLeftSideView(),
+                plusMinusTwo: this.findFlippableFromRightOnRightSideView() || this.findFlippingFromRightOnRightSideView(),
+            };
+        }
 
+        // TODO - for flipping to right
+    }
 
-        if (!rightVisibleView || !flippableFromRightOnLeftSideView) {
+    setInstanceFlipToLeftStyles(viewsToAnimate, progression) {
+        if (!viewsToAnimate.previouslyVisibleView || !viewsToAnimate.plusMinusOne) {
             console.log("Next pages not found, can't flip");
             return false;
         }
 
-        rightVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
-        flippableFromRightOnLeftSideView.setFlippingState(
+        viewsToAnimate.previouslyVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
+        viewsToAnimate.plusMinusOne.setFlippingState(
             VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT,
         );
-        if (flippableFromRightOnRightSideView) {
-            flippableFromRightOnRightSideView.setFlippingState(
+        if (viewsToAnimate.plusMinusTwo) {
+            viewsToAnimate.plusMinusTwo.setFlippingState(
                 VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT,
             );
         }
@@ -179,15 +197,15 @@ class FlipperManager extends DefaultViewManager {
 
         const animationStyles = this.getFlippingAnimationStyles(progression);
 
-        this.setVisibleViewStyles(rightVisibleView, animationStyles.rightViewElement);
+        this.setVisibleViewStyles(viewsToAnimate.previouslyVisibleView, animationStyles.rightViewElement);
         this.setVisibleViewStyles(
-            flippableFromRightOnLeftSideView,
+            viewsToAnimate.plusMinusOne,
             animationStyles.flippableFromRightOnLeftSideViewElement,
         );
 
-        if (flippableFromRightOnRightSideView) {
+        if (viewsToAnimate.plusMinusTwo) {
             this.setVisibleViewStyles(
-                flippableFromRightOnRightSideView,
+                viewsToAnimate.plusMinusTwo,
                 animationStyles.flippableFromRightOnRightSideViewElement,
             );
         }
@@ -204,53 +222,31 @@ class FlipperManager extends DefaultViewManager {
         });
     }
 
-
-    animateRightToLeftFlip(animationDirection) {
+    /**
+     *
+     * @param animationDirection - LEFT or RIGHT
+     * @param progressionDirection - FORWARDS or BACKWARDS
+     * @returns {boolean} - If the animation is actually possible
+     */
+    animateFlip(animationDirection, progressionDirection) {
         if (this.isFlipping) {
-            return;
-        }
-        this.isFlipping = true;
-
-        /*
-            If the animation direction is BACKWARDS, it means we want to reset the pages to the original state.
-            This means that we have already dragged the pages, so we need to search also for the pages that are flipping.
-         */
-        const rightVisibleView = this.findRightVisibleView() || (
-            animationDirection === 'BACKWARDS' ? this.findRightVisibleViewFlippingLeft() : null
-        );
-        const flippableFromRightOnLeftSideView = this.findFlippableFromRightOnLeftSideView() || (
-            animationDirection === 'BACKWARDS' ? this.findFlippingFromRightOnLeftSideView() : null
-        );
-        const flippableFromRightOnRightSideView = this.findFlippableFromRightOnRightSideView() ||
-            (animationDirection === 'BACKWARDS' ? this.findFlippingFromRightOnRightSideView() : null);
-
-        if (!rightVisibleView || !flippableFromRightOnLeftSideView) {
-            console.log("Next pages not found, can't flip");
-            this.isFlipping = false;
             return false;
         }
 
-        rightVisibleView.setFlippingState(VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT);
-        flippableFromRightOnLeftSideView.setFlippingState(
-            VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE_FLIPPING_LEFT,
-        );
-        if (flippableFromRightOnRightSideView) {
-            flippableFromRightOnRightSideView.setFlippingState(
-                VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT,
-            );
+        const viewsToAnimate = this.getViewsToAnimate('LEFT');
+
+        if (!viewsToAnimate.previouslyVisibleView || !viewsToAnimate.plusMinusOne) {
+            console.log("Next pages not found, can't flip");
+            return false;
         }
 
-        const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
-        const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
-        const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
+        console.log("animating flip", animationDirection, progressionDirection);
 
-        outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingClass);
-        outsideShadowElement.classList.add(this.outsideShadowFlippingLeftClass);
 
-        bendingShadowElement.classList.add(this.bendingShadowFlippingLeftClass);
+        this.isFlipping = true;
 
         let animationStartTimestamp = null;
-        const animationDurationLeft = this.getAnimationDurationLeft(animationDirection);
+        const animationDurationLeft = this.getRemainingAnimationDuration(progressionDirection);
 
         const animationCallback = (timestamp) => {
             if (!animationStartTimestamp) {
@@ -259,39 +255,15 @@ class FlipperManager extends DefaultViewManager {
 
             const elapsed = timestamp - animationStartTimestamp;
 
-            const progression = this.getAnimationProgression(elapsed, animationDirection);
+            const progression = this.getAnimationProgression(elapsed, progressionDirection);
 
-            const animationStyles = this.getFlippingAnimationStyles(progression);
-
-            this.setVisibleViewStyles(rightVisibleView, animationStyles.rightViewElement);
-            this.setVisibleViewStyles(
-                flippableFromRightOnLeftSideView,
-                animationStyles.flippableFromRightOnLeftSideViewElement,
-            );
-
-            if (flippableFromRightOnRightSideView) {
-                this.setVisibleViewStyles(
-                    flippableFromRightOnRightSideView,
-                    animationStyles.flippableFromRightOnRightSideViewElement,
-                );
-            }
-
-            setElementStyles(outsideShadowElement, {
-                ...animationStyles.flippableFromRightOnLeftSideViewElement,
-                ...animationStyles.outsideShadowElement,
-            });
-
-            setElementStyles(outsideShadowWrapperElement, animationStyles.outsideShadowWrapperElementFlippingLeft);
-            setElementStyles(bendingShadowElement, {
-                ...animationStyles.flippableFromRightOnLeftSideViewElement,
-                ...animationStyles.bendingShadowFLippingLeft,
-            });
+            this.setInstanceFlipToLeftStyles(viewsToAnimate, progression);
 
             if (elapsed < animationDurationLeft) {
                 requestAnimationFrame(animationCallback);
             } else {
 
-                if(animationDirection === 'FORWARDS') {
+                if(progressionDirection === 'FORWARDS') {
                     // We need to remove pages only if the animation was completed, not reset
                     const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
                     if (flippableFromLeftOnLeftSide) {
@@ -309,18 +281,17 @@ class FlipperManager extends DefaultViewManager {
                     }
                 }
 
-
-                rightVisibleView.setFlippingState(animationDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE : VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
-                flippableFromRightOnLeftSideView.setFlippingState(animationDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE );
-                if(flippableFromRightOnRightSideView) {
-                    flippableFromRightOnRightSideView.setFlippingState(animationDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
+                viewsToAnimate.previouslyVisibleView.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE : VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
+                viewsToAnimate.plusMinusOne.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE );
+                if(viewsToAnimate.plusMinusTwo) {
+                    viewsToAnimate.plusMinusTwo.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
                 }
 
-                this.resetShadowStyles();
+                this.resetShadowStyles('LEFT');
 
-                outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingClass);
-                outsideShadowElement.classList.remove(this.outsideShadowFlippingLeftClass);
-                bendingShadowElement.classList.remove(this.bendingShadowFlippingLeftClass);
+                // Resetting dragging state
+                this.dragProgression = 0;
+                this.draggingDirection = null;
 
                 this.isFlipping = false;
             }
@@ -559,32 +530,36 @@ class FlipperManager extends DefaultViewManager {
 
     /**
      * For some reason the shadow element creates a flicker if not completely reset to the initial state.
-     *
      */
     resetShadowStyles() {
         const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
         const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
+        const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
 
         outsideShadowWrapperElement.style.filter = '';
         outsideShadowElement.style.transform = '';
         outsideShadowElement.style.clipPath = '';
         outsideShadowElement.style.opacity = '';
+
+        outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingClass);
+        outsideShadowElement.classList.remove(this.outsideShadowFlippingLeftClass, this.outsideShadowFlippingRightClass);
+        bendingShadowElement.classList.remove(this.bendingShadowFlippingLeftClass, this.bendingShadowFlippingRightClass);
     }
 
-    getAnimationProgression(elapsedMs, animationDirection) {
-        const animationDurationLeft = this.getAnimationDurationLeft(animationDirection);
+    getAnimationProgression(elapsedMs, progressionDirection) {
+        const animationDurationLeft = this.getRemainingAnimationDuration(progressionDirection);
 
         const easedPartialProgression = easingFunction(elapsedMs / animationDurationLeft);
 
-        const progression = animationDirection === 'FORWARDS' ? this.dragProgression + easedPartialProgression
+        const progression = progressionDirection === 'FORWARDS' ? this.dragProgression + easedPartialProgression
                     : this.dragProgression - easedPartialProgression;
 
         // We don't want the animation to go past the 100%, because the styles get messed up after 100%
         return Math.max(0, Math.min(1, progression));
     }
 
-    getAnimationDurationLeft(animationDirection) {
-        return this.animationDurationMs * (animationDirection === 'FORWARDS' ? 1 - this.dragProgression : this.dragProgression);
+    getRemainingAnimationDuration(progressionDirection) {
+        return this.animationDurationMs * (progressionDirection === 'FORWARDS' ? 1 - this.dragProgression : this.dragProgression);
     }
 
     flipFromLeftToRight() {
@@ -702,6 +677,10 @@ class FlipperManager extends DefaultViewManager {
         requestAnimationFrame(animationCallback);
 
         return true;
+    }
+
+    flipFromRightToLeft() {
+        return this.animateFlip('LEFT', 'FORWARDS');
     }
 
     next() {
