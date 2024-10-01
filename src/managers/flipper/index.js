@@ -272,6 +272,7 @@ class FlipperManager extends DefaultViewManager {
                 requestAnimationFrame(animationCallback);
             } else {
 
+                // TODO - fix for right animation
                 if(progressionDirection === 'FORWARDS') {
                     // We need to remove pages only if the animation was completed, not reset
                     const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
@@ -572,120 +573,7 @@ class FlipperManager extends DefaultViewManager {
     }
 
     flipFromLeftToRight() {
-        this.isFlipping = true;
-
-        const leftVisibleView = this.findReadableLeftPage();
-        const flippableFromLeftOnRightSideView = this.findFlippableFromLeftOnRightSideView();
-        const flippableFromLeftOnLeftSideView = this.findFlippableFromLeftOnLeftSideView();
-
-        if (!leftVisibleView || !flippableFromLeftOnRightSideView) {
-            console.log("Previous pages not found, can't flip");
-            this.isFlipping = false;
-            return false;
-        }
-
-        leftVisibleView.setFlippingState(VIEW_FLIPPING_STATE.LEFT_PAGE_FLIPPING_TO_RIGHT);
-        flippableFromLeftOnRightSideView.setFlippingState(
-            VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT,
-        );
-        if (flippableFromLeftOnLeftSideView) {
-            flippableFromLeftOnLeftSideView.setFlippingState(
-                VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE_FLIPPING_RIGHT,
-            );
-        }
-
-        const outsideShadowWrapperElement = document.getElementById(this.outsideShadowWrapperId);
-        const outsideShadowElement = document.getElementById(this.outsideShadowElementId);
-        const bendingShadowElement = document.getElementById(this.bendingShadowElementId);
-
-        outsideShadowWrapperElement.classList.add(this.outsideShadowWrapperFlippingClass);
-        outsideShadowElement.classList.add(this.outsideShadowFlippingRightClass);
-
-        bendingShadowElement.classList.add(this.bendingShadowFlippingRightClass);
-
-        let animationStartTimestamp = null;
-
-        const animationCallback = (timestamp) => {
-            if (!animationStartTimestamp) {
-                animationStartTimestamp = timestamp;
-            }
-
-            const elapsed = timestamp - animationStartTimestamp;
-
-            const progression = this.getAnimationProgression(elapsed);
-
-            const animationStyles = this.getFlippingAnimationStyles(progression);
-
-            this.setVisibleViewStyles(leftVisibleView, animationStyles.leftViewElement);
-            this.setVisibleViewStyles(
-                flippableFromLeftOnRightSideView,
-                animationStyles.flippableFromLeftOnRightSideViewElement,
-            );
-
-            if (flippableFromLeftOnLeftSideView) {
-                this.setVisibleViewStyles(
-                    flippableFromLeftOnLeftSideView,
-                    animationStyles.flippableFromLeftOnLeftSideFlippingRight,
-                );
-            }
-
-            setElementStyles(outsideShadowElement, {
-                ...animationStyles.flippableFromLeftOnRightSideViewElement,
-                ...animationStyles.outsideShadowElement,
-            });
-
-            setElementStyles(outsideShadowWrapperElement, animationStyles.outsideShadowWrapperElementFlippingRight);
-            setElementStyles(bendingShadowElement, {
-                ...animationStyles.flippableFromLeftOnRightSideViewElement,
-                ...animationStyles.bendingShadowFlippingRight,
-            });
-
-            if (elapsed < this.animationDurationMs) {
-                requestAnimationFrame(animationCallback);
-            } else {
-                const flippableFromRightOnRightSide = this.findFlippableFromRightOnRightSideView();
-                if (flippableFromRightOnRightSide) {
-                    this.views.remove(flippableFromRightOnRightSide);
-                }
-
-                const flippableFromRightOnLeftSide = this.findFlippableFromRightOnLeftSideView();
-                if (flippableFromRightOnLeftSide) {
-                    this.views.remove(flippableFromRightOnLeftSide);
-                }
-
-                const readableRightPage = this.findRightVisibleView();
-                if (readableRightPage) {
-                    readableRightPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
-                }
-
-                const readableLeftPageFlipping = this.findLeftPageFlippingRight();
-                if (readableLeftPageFlipping) {
-                    readableLeftPageFlipping.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE);
-                }
-
-                const flippingPageOnRightSide = this.findFlippingFromLeftOnRightSideView();
-                if (flippingPageOnRightSide) {
-                    flippingPageOnRightSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
-                }
-
-                const flippingPageOnLeftSide = this.findFlippingFromLeftOnLeftSideView();
-                if (flippingPageOnLeftSide) {
-                    flippingPageOnLeftSide.setFlippingState(VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
-                }
-
-                this.resetShadowStyles();
-
-                outsideShadowWrapperElement.classList.remove(this.outsideShadowWrapperFlippingClass);
-                outsideShadowElement.classList.remove(this.outsideShadowFlippingRightClass);
-                bendingShadowElement.classList.remove(this.bendingShadowFlippingRightClass);
-
-                this.isFlipping = false;
-            }
-        };
-
-        requestAnimationFrame(animationCallback);
-
-        return true;
+        return this.animateFlip('RIGHT', 'FORWARDS');
     }
 
     flipFromRightToLeft() {
