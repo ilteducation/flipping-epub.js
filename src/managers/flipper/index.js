@@ -275,26 +275,34 @@ class FlipperManager extends DefaultViewManager {
                 // TODO - fix for right animation
                 if(progressionDirection === 'FORWARDS') {
                     // We need to remove pages only if the animation was completed, not reset
-                    const flippableFromLeftOnLeftSide = this.findFlippableFromLeftOnLeftSideView();
-                    if (flippableFromLeftOnLeftSide) {
-                        this.views.remove(flippableFromLeftOnLeftSide);
+                    const unnecessaryPlusMinusTwoView = animationDirection === 'LEFT' ? this.findFlippableFromLeftOnLeftSideView() : this.findFlippableFromRightOnRightSideView();
+                    if (unnecessaryPlusMinusTwoView) {
+                        this.views.remove(unnecessaryPlusMinusTwoView);
                     }
 
-                    const flippableFromLeftOnRightSide = this.findFlippableFromLeftOnRightSideView();
-                    if (flippableFromLeftOnRightSide) {
+                    const unnecessaryPlusMinusOneView = animationDirection === 'LEFT' ? this.findFlippableFromLeftOnRightSideView() : this.findFlippableFromRightOnLeftSideView();
+                    if (unnecessaryPlusMinusOneView) {
                         this.views.remove(flippableFromLeftOnRightSide);
                     }
 
-                    const readableLeftPage = this.findReadableLeftPage();
-                    if (readableLeftPage) {
-                        readableLeftPage.setFlippingState(VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
+                    const readablePageWithoutAnimation = animationDirection ==='LEFT' ? this.findReadableLeftPage() : this.findRightVisibleView();
+                    if (readablePageWithoutAnimation) {
+                        readablePageWithoutAnimation.setFlippingState(animationDirection ==='LEFT' ? VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
                     }
                 }
 
-                viewsToAnimate.previouslyVisibleView.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE : VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
-                viewsToAnimate.plusMinusOne.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE );
-                if(viewsToAnimate.plusMinusTwo) {
-                    viewsToAnimate.plusMinusTwo.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
+                if(animationDirection === 'LEFT') {
+                    viewsToAnimate.previouslyVisibleView.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE : VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT);
+                    viewsToAnimate.plusMinusOne.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE );
+                    if(viewsToAnimate.plusMinusTwo) {
+                        viewsToAnimate.plusMinusTwo.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE);
+                    }
+                } else if(animationDirection === 'RIGHT') {
+                    viewsToAnimate.previouslyVisibleView.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE : VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT);
+                    viewsToAnimate.plusMinusOne.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE );
+                    if(viewsToAnimate.plusMinusTwo) {
+                        viewsToAnimate.plusMinusTwo.setFlippingState(progressionDirection === 'FORWARDS' ? VIEW_FLIPPING_STATE.READABLE_PAGE_LEFT : VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE);
+                    }
                 }
 
                 this.resetShadowStyles(animationDirection);
