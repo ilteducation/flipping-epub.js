@@ -72,6 +72,9 @@ class FlipperManager extends DefaultViewManager {
         view.on(PAGE_FLIPPING_EVENTS.SWIPE_LEFT, () => {
             this.emit(PAGE_FLIPPING_EVENTS.SWIPE_LEFT);
         });
+        view.on(PAGE_FLIPPING_EVENTS.SWIPE_RIGHT, () => {
+            this.emit(PAGE_FLIPPING_EVENTS.SWIPE_RIGHT);
+        });
 
         view.on(PAGE_DRAGGING_EVENTS.DRAG_START, (event) => {
             this.draggingDirection = event.direction;
@@ -227,7 +230,7 @@ class FlipperManager extends DefaultViewManager {
             ...animationStyles.outsideShadowElement,
         });
 
-        setElementStyles(outsideShadowWrapperElement, animationStyles.outsideShadowWrapperElementFlippingLeft);
+        setElementStyles(outsideShadowWrapperElement, animationDirection ==='LEFT' ? animationStyles.outsideShadowWrapperElementFlippingLeft: animationStyles.outsideShadowWrapperElementFlippingRight);
         setElementStyles(bendingShadowElement, {
             ...plusMinusOneElementStyles,
             ...(animationDirection === 'LEFT' ? animationStyles.bendingShadowFLippingLeft: animationStyles.bendingShadowFlippingRight),
@@ -271,8 +274,6 @@ class FlipperManager extends DefaultViewManager {
             if (elapsed < animationDurationLeft) {
                 requestAnimationFrame(animationCallback);
             } else {
-
-                // TODO - fix for right animation
                 if(progressionDirection === 'FORWARDS') {
                     // We need to remove pages only if the animation was completed, not reset
                     const unnecessaryPlusMinusTwoView = animationDirection === 'LEFT' ? this.findFlippableFromLeftOnLeftSideView() : this.findFlippableFromRightOnRightSideView();
@@ -282,7 +283,7 @@ class FlipperManager extends DefaultViewManager {
 
                     const unnecessaryPlusMinusOneView = animationDirection === 'LEFT' ? this.findFlippableFromLeftOnRightSideView() : this.findFlippableFromRightOnLeftSideView();
                     if (unnecessaryPlusMinusOneView) {
-                        this.views.remove(flippableFromLeftOnRightSide);
+                        this.views.remove(unnecessaryPlusMinusOneView   );
                     }
 
                     const readablePageWithoutAnimation = animationDirection ==='LEFT' ? this.findReadableLeftPage() : this.findRightVisibleView();

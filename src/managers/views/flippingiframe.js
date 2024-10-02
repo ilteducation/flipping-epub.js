@@ -117,11 +117,14 @@ class FlippingIframeView extends IframeView {
 			preventScroll: true,
 		});
 		contentDocument.addEventListener('swipe', (event) => {
-
 			if(event.detail.directions.left) {
-				this.emit(PAGE_FLIPPING_EVENTS.SWIPE_LEFT);
+				if(this.isRightSidePage()) {
+					this.emit(PAGE_FLIPPING_EVENTS.SWIPE_LEFT);
+				}
 			} else if(event.detail.directions.right) {
-				this.emit(PAGE_FLIPPING_EVENTS.SWIPE_RIGHT);
+				if(!this.isRightSidePage()) {
+					this.emit(PAGE_FLIPPING_EVENTS.SWIPE_RIGHT);
+				}
 			}
 		}, {passive: false}); // Safari bounce fix - https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#passive
 
