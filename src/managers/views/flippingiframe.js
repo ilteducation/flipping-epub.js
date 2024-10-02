@@ -5,7 +5,6 @@ import SwipeListener from 'swipe-listener';
 import {PAGE_DRAGGING_EVENTS, PAGE_FLIPPING_EVENTS} from "./viewflippingevents";
 
 class FlippingIframeView extends IframeView {
-
 	constructor(section, options) {
 		super(section, options);
 
@@ -15,30 +14,36 @@ class FlippingIframeView extends IframeView {
 	}
 
 	/**
-     * If the page contents should be aligned left
-     * @returns {boolean}
-     */
-	isRightSidePage() {
-		return this.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT
-            || this.viewFlippingState === VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT
-            || this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE
-            || this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT
-            || this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE
-            || this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT;
+	 * If the page contents is already aligned to left
+	 * @returns {boolean}
+	 */
+	isAlreadyAlignedToLeftAndContentDoesNOTNeedToBePushed() {
+		return (
+			this.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT ||
+			this.viewFlippingState === VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT ||
+			this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE ||
+			this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT ||
+			this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE ||
+			this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE_FLIPPING_RIGHT
+		);
 	}
 
 	/**
-     * If the page itself is displayed on the right side of the player
-     */
-	isPositionedOnRightSide() {
-		return this.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT
-            || this.viewFlippingState === VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT
-            || this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE
-            || this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT;
+	 * If the page itself is displayed on the right side of the player
+	 */
+	isOnRightSideOfThePlayer() {
+		return (
+			this.viewFlippingState === VIEW_FLIPPING_STATE.READABLE_PAGE_RIGHT ||
+			this.viewFlippingState === VIEW_FLIPPING_STATE.RIGHT_PAGE_FLIPPING_TO_LEFT ||
+			this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE ||
+			this.viewFlippingState === VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE_FLIPPING_LEFT
+		);
 	}
 
+	/**
+	 * This is mostly as the parent implementation, but adding the inline styles update when changing state.
+	 */
 	render(request, show) {
-
 		// view.onLayout = this.layout.format.bind(this.layout);
 		this.create();
 
@@ -51,87 +56,88 @@ class FlippingIframeView extends IframeView {
 
 		// Render Chain
 		return this.sectionRender
-			.then(function (contents) {
-				return this.load(contents);
-			}.bind(this))
-			.then(function () {
+			.then((contents) => this.load(contents))
+			.then(
+				() => {
+					// find and report the writingMode axis
+					const writingMode = this.contents.writingMode();
 
-				// find and report the writingMode axis
-				let writingMode = this.contents.writingMode();
+					// Set the axis based on the flow and writing mode
+					let axis;
+					if (this.settings.flow === 'scrolled') {
+						axis = writingMode.indexOf('vertical') === 0 ? 'horizontal' : 'vertical';
+					} else {
+						axis = writingMode.indexOf('vertical') === 0 ? 'vertical' : 'horizontal';
+					}
 
-				// Set the axis based on the flow and writing mode
-				let axis;
-				if (this.settings.flow === "scrolled") {
-					axis = (writingMode.indexOf("vertical") === 0) ? "horizontal" : "vertical";
-				} else {
-					axis = (writingMode.indexOf("vertical") === 0) ? "vertical" : "horizontal";
-				}
+					if (writingMode.indexOf('vertical') === 0 && this.settings.flow === 'paginated') {
+						this.layout.delta = this.layout.height;
+					}
 
-				if (writingMode.indexOf("vertical") === 0 && this.settings.flow === "paginated") {
-					this.layout.delta = this.layout.height;
-				}
+					this.setAxis(axis);
+					this.emit(EVENTS.VIEWS.AXIS, axis);
 
-				this.setAxis(axis);
-				this.emit(EVENTS.VIEWS.AXIS, axis);
+					this.setWritingMode(writingMode);
+					this.emit(EVENTS.VIEWS.WRITING_MODE, writingMode);
 
-				this.setWritingMode(writingMode);
-				this.emit(EVENTS.VIEWS.WRITING_MODE, writingMode);
+					// apply the layout function to the contents
+					this.layout.format(this.contents, this.section, this.axis);
 
+					// Listen for events that require an expansion of the iframe
+					this.addListeners();
 
-				// apply the layout function to the contents
-				this.layout.format(this.contents, this.section, this.axis);
+					return new Promise((resolve, reject) => {
+						// Expand the iframe to the full size of the content
+						this.expand();
 
-				// Listen for events that require an expansion of the iframe
-				this.addListeners();
+						this.updateInlineStyle();
 
-				return new Promise((resolve, reject) => {
-					// Expand the iframe to the full size of the content
-					this.expand();
+						this.addTouchHandlers();
 
-					this.updateInlineStyle();
-
-					this.addTouchHandlers();
-
-					resolve();
-				});
-
-			}.bind(this), function (e) {
-				this.emit(EVENTS.VIEWS.LOAD_ERROR, e);
-				return new Promise((resolve, reject) => {
-					reject(e);
-				});
-			}.bind(this))
-			.then(function () {
+						resolve();
+					});
+				},
+				(e) => {
+					this.emit(EVENTS.VIEWS.LOAD_ERROR, e);
+					return new Promise((resolve, reject) => {
+						reject(e);
+					});
+				},
+			)
+			.then(() => {
 				this.emit(EVENTS.VIEWS.RENDERED, this.section);
-			}.bind(this));
+			});
 	}
 
 	addTouchHandlers() {
-		if(!this.iframe || !this.iframe.contentDocument) {
+		if (!this.iframe || !this.iframe.contentDocument) {
 			return;
 		}
 
-		const contentDocument = this.iframe.contentDocument;
+		const { contentDocument } = this.iframe;
 
 		const swipeListener = new SwipeListener(contentDocument, {
 			preventScroll: true,
 		});
-		contentDocument.addEventListener('swipe', (event) => {
-			if(event.detail.directions.left) {
-				if(this.isRightSidePage()) {
-					this.emit(PAGE_FLIPPING_EVENTS.SWIPE_LEFT);
+		contentDocument.addEventListener(
+			'swipe',
+			(event) => {
+				if (event.detail.directions.left) {
+					if (this.isOnRightSideOfThePlayer()) {
+						this.emit(PAGE_FLIPPING_EVENTS.SWIPE_LEFT);
+					}
+				} else if (event.detail.directions.right) {
+					if (!this.isOnRightSideOfThePlayer()) {
+						this.emit(PAGE_FLIPPING_EVENTS.SWIPE_RIGHT);
+					}
 				}
-			} else if(event.detail.directions.right) {
-				if(!this.isRightSidePage()) {
-					this.emit(PAGE_FLIPPING_EVENTS.SWIPE_RIGHT);
-				}
-			}
-		}, {passive: false}); // Safari bounce fix - https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#passive
-
+			},
+			{ passive: false },
+		); // Safari bounce fix - https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#passive
 
 		contentDocument.addEventListener('touchstart', (event) => {
-			const direction = this.isRightSidePage() ? 'LEFT': 'RIGHT';
-			this.emit(PAGE_DRAGGING_EVENTS.DRAG_START, {direction});
+			const direction = this.isOnRightSideOfThePlayer() ? 'LEFT' : 'RIGHT';
+			this.emit(PAGE_DRAGGING_EVENTS.DRAG_START, { direction });
 		});
 
 		contentDocument.addEventListener('touchmove', (event) => {
@@ -146,7 +152,7 @@ class FlippingIframeView extends IframeView {
 	}
 
 	setFlippingState(newFlippingState) {
-		// Removing old class
+		// The CSS classes are not used for CSS anymore, but they are useful for debugging when tracking the behavior.
 		this.element.classList.remove(this.viewFlippingState);
 
 		this.viewFlippingState = newFlippingState;
@@ -154,26 +160,30 @@ class FlippingIframeView extends IframeView {
 
 		this.updateInlineStyle();
 
-		if ([
-			VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE,
-			VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE,
-			VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE,
-			VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE
-		].includes(newFlippingState)) {
+		if (
+			[
+				VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_LEFT_SIDE,
+				VIEW_FLIPPING_STATE.FLIPPABLE_FROM_LEFT_ON_RIGHT_SIDE,
+				VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_LEFT_SIDE,
+				VIEW_FLIPPING_STATE.FLIPPABLE_FROM_RIGHT_ON_RIGHT_SIDE,
+			].includes(newFlippingState)
+		) {
 			// Some inconsistent missing check in super.hide()
 			if (this.iframe) {
 				this.hide();
 			}
 		}
-
 	}
 
 	getBodyElement() {
 		if (!this.iframe) {
 			return null;
 		}
+		if (!this.iframe.contentDocument) {
+			return null;
+		}
 
-		return this.iframe.contentDocument.querySelector("body");
+		return this.iframe.contentDocument.querySelector('body');
 	}
 
 	getDiffBetweenIframeAndBodyWidth() {
@@ -193,7 +203,7 @@ class FlippingIframeView extends IframeView {
 	}
 
 	getBodyLeftOffset() {
-		if (this.isRightSidePage()) {
+		if (this.isAlreadyAlignedToLeftAndContentDoesNOTNeedToBePushed()) {
 			return 0;
 		}
 
@@ -201,43 +211,37 @@ class FlippingIframeView extends IframeView {
 	}
 
 	updateInlineStyle() {
-		this.element.style.position = "absolute";
+		this.element.style.position = 'absolute';
 
 		// To know that we are referring the coordinates to the top left corner. Also necessary for RTL books.
-		this.element.style.left = "0";
+		this.element.style.left = '0';
 
 		let leftOffset = 0;
-		if (this.isPositionedOnRightSide()) {
+		if (this.isOnRightSideOfThePlayer()) {
 			leftOffset = this.width();
 		}
+		/*
+        We use translate3d(x, 0, 0) instead of left because it will be overriden by the transform during the animation.
+        If we would have used style.left, we end up with two properties that need to be updated, because they add up.
+        * */
 		this.element.style.transform = `translate3d(${leftOffset}px, 0, 0)`;
 
 		/* When on the left side, the actual content page might be more narrow than the iframe,
-        so we need to bring it to the "middle of the book".
+            so we need to bring it to the "middle of the book".
 
-        Same thing that we did in the documentFix.ts, but doing it here
-         for having control of how the pages are animated and positioned.
-         */
+            Same thing that we did in the documentFix.ts, but doing it here
+             for having control of how the pages are animated and positioned.
+             */
 		const bodyLeftOffset = this.getBodyLeftOffset();
-
 		const bodyElement = this.getBodyElement();
 		if (bodyElement) {
-			bodyElement.style.left = bodyLeftOffset + "px";
-
-			// Disabling iframe scrolling
-			bodyElement.style.overflow = "hidden";
-			const htmlElement = bodyElement.parentElement;
-			htmlElement.style.overflow = "hidden";
-			htmlElement.style.overscrollBehavior = "none";
+			bodyElement.style.marginLeft = `${bodyLeftOffset}px`;
 		}
-
-
 	}
 
 	isShown() {
-		return this.element.style.visibility === "visible";
+		return this.element.style.visibility === 'visible';
 	}
-
 }
 
 export default FlippingIframeView;
